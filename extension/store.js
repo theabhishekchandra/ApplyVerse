@@ -9,7 +9,8 @@ var JF_KEYS = {
   seenBg: "jf_seen_bg",        // [jobKey] seen by the background sweep
   bgResults: "jf_bg_results",  // [normalized job + firstSeen] last watch results
   newCount: "jf_new_count",    // badge number (new since last opened)
-  lastRun: "jf_last_run"       // { at, total, new, ok, reason }
+  lastRun: "jf_last_run",      // { at, total, new, ok, reason }
+  track: "jf_track"            // { [jobKey]: "saved" | "applied" | "hidden" }
 };
 var JF_DEFAULT_SETTINGS = { autoEnabled: false, intervalMin: 180, notify: true, platforms: ["greenhouse", "lever", "ashby"] };
 

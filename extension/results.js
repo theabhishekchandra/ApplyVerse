@@ -19,6 +19,7 @@ let seenAtStart = new Set();
 let currentProvider = null;
 let activeSources = null;     // Set of source names shown (null = all)
 let renderTimer = null;
+let track = {};               // jobKey -> "saved" | "applied" | "hidden"
 
 // ---------- derived fields for filtering ----------
 // experience as a [minYears, maxYears] range (or null if unknown) so bucket
@@ -60,6 +61,35 @@ function salaryNum(job) {
   let v = parseFloat(m[m.length - 1].replace(/,/g, "")) || 0;
   if (/l|lac|lakh/i.test(s)) v *= 100000; else if (/k/i.test(s)) v *= 1000;
   return v;
+}
+
+// ---------- fit scoring (Tier 2) ----------
+// Rank by how well a job matches your keywords/role. Title hits weigh most,
+// then the enriched JD / department / company. Generic role words are dropped
+// (same idea as the ATS matcher) so "kotlin"/"android" drive the score.
+const FIT_STOP = new Set(["developer", "engineer", "software", "senior", "junior", "lead", "staff", "principal", "manager", "jobs", "job"]);
+function matchTerms() {
+  const kw = splitList($("keywords").value).map(s => s.toLowerCase());
+  const roleW = ($("role").value || "").toLowerCase().split(/\s+/).map(s => s.trim()).filter(w => w.length > 2 && !FIT_STOP.has(w));
+  let terms = [...new Set(kw.concat(roleW))].filter(Boolean);
+  if (!terms.length) terms = ($("role").value || "").toLowerCase().split(/\s+/).filter(s => s.length > 2);
+  return terms;
+}
+function fitScore(job, terms) {
+  if (!terms.length) return 0;
+  const title = (job.title || "").toLowerCase();
+  const body = ((job.jd || "") + " " + (job.department || "") + " " + (job.company || "")).toLowerCase();
+  let s = 0, max = 0;
+  for (const t of terms) { max += 3; if (title.includes(t)) s += 3; else if (body.includes(t)) s += 1; }
+  return max ? Math.round(100 * s / max) : 0;
+}
+
+// ---------- apply tracking (Tier 2) ----------
+async function loadTrack() { track = (await jfGet(JF_KEYS.track, {})) || {}; }
+async function setTrackStatus(key, val) {
+  if (track[key] === val || (!val && !track[key])) { if (!val) delete track[key]; }
+  else if (val) track[key] = val; else delete track[key];
+  await chrome.storage.local.set({ [JF_KEYS.track]: track });
 }
 
 // ---------- avatar helpers ----------
@@ -204,11 +234,17 @@ function currentFilters() {
     fresh: parseInt($("fFresh").value) || 0,
     mode: $("fMode").value,
     sort: $("fSort").value,
+    track: $("fTrack") ? $("fTrack").value : "active",
     onlyNew: $("onlyNew").checked
   };
 }
 function passes(entry, f) {
   const j = entry.job;
+  const st = track[jobKey(j)];
+  // Apply-tracking filter: default hides jobs you've dismissed.
+  if (f.track === "active") { if (st === "hidden") return false; }
+  else if (f.track === "saved") { if (st !== "saved") return false; }
+  else if (f.track === "applied") { if (st !== "applied") return false; }
   if (f.onlyNew && !entry.isNew) return false;
   if (activeSources && ![...entry.sources].some(s => activeSources.has(s))) return false;
   if (f.text && !((j.title || "").toLowerCase().includes(f.text) || (j.company || "").toLowerCase().includes(f.text))) return false;
@@ -228,6 +264,11 @@ function sortEntries(list, sort) {
   const cmpStr = (a, b) => a.localeCompare(b);
   list.sort((A, B) => {
     const a = A.job, b = B.job;
+    if (sort === "fit") {
+      if ((B._fit || 0) !== (A._fit || 0)) return (B._fit || 0) - (A._fit || 0);
+      if (A.isNew !== B.isNew) return A.isNew ? -1 : 1;
+      const da = jobDays(a), db = jobDays(b); return (da == null ? 1e9 : da) - (db == null ? 1e9 : db);
+    }
     if (sort === "company") return cmpStr(a.company || "~", b.company || "~");
     if (sort === "title") return cmpStr(a.title || "~", b.title || "~");
     if (sort === "salary") return salaryNum(b) - salaryNum(a);
@@ -257,6 +298,8 @@ const EMPTY_DEFAULT = emptyEl.innerHTML;
 function render() {
   const f = currentFilters();
   renderSourceChips();
+  const terms = matchTerms();
+  for (const e of merged.values()) e._fit = fitScore(e.job, terms);
   let list = [...merged.values()].filter(e => passes(e, f));
   sortEntries(list, f.sort);
   rowsEl.innerHTML = "";
@@ -278,7 +321,9 @@ function render() {
 }
 function rowFor(entry) {
   const j = entry.job;
-  const card = document.createElement("div"); card.className = "card" + (entry.isNew ? " new" : "");
+  const key = jobKey(j);
+  const status = track[key];
+  const card = document.createElement("div"); card.className = "card" + (entry.isNew ? " new" : "") + (status ? " st-" + status : "");
   const av = document.createElement("div"); av.className = "avatar";
   av.textContent = initials(j.company || j.title); av.style.background = avatarColor(j.company || j.title);
   const main = document.createElement("div"); main.className = "card-main";
@@ -286,6 +331,8 @@ function rowFor(entry) {
   const a = document.createElement("a"); a.href = j.url; a.target = "_blank"; a.textContent = j.title;
   t.appendChild(a);
   if (entry.isNew) { const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; t.appendChild(b); }
+  if (status === "applied") { const b = document.createElement("span"); b.className = "badge applied"; b.textContent = "APPLIED"; t.appendChild(b); }
+  else if (status === "saved") { const b = document.createElement("span"); b.className = "badge saved"; b.textContent = "★ SAVED"; t.appendChild(b); }
   main.appendChild(t);
   const sub = document.createElement("div"); sub.className = "card-sub";
   const locv = j.location || j.locations || "";
@@ -293,16 +340,27 @@ function rowFor(entry) {
   main.appendChild(sub);
   const metas = document.createElement("div"); metas.className = "metas";
   const addMeta = (txt, cls) => { if (!txt || txt === "—") return; const m = document.createElement("span"); m.className = "meta" + (cls ? " " + cls : ""); m.textContent = txt; metas.appendChild(m); };
+  if (entry._fit > 0) addMeta("★ " + entry._fit + "% match", "fit");
   addMeta(j.salary, "pay"); addMeta(j.exp, "");
   const mode = jobMode(j); if (mode) addMeta(mode[0].toUpperCase() + mode.slice(1), "mode");
+  if (j.jd) { const dt = document.createElement("button"); dt.className = "jd-toggle"; dt.textContent = "▾ details"; dt.onclick = () => { const p = card.querySelector(".jd"); const open = p.style.display !== "none"; p.style.display = open ? "none" : "block"; dt.textContent = open ? "▾ details" : "▴ hide"; }; metas.appendChild(dt); }
   if (metas.children.length) main.appendChild(metas);
+  if (j.jd) { const p = document.createElement("div"); p.className = "jd"; p.style.display = "none"; p.textContent = j.jd + "…"; main.appendChild(p); }
+
   const side = document.createElement("div"); side.className = "card-side";
+  const acts = document.createElement("div"); acts.className = "card-acts";
+  const mkBtn = (label, val, title) => {
+    const b = document.createElement("button"); b.className = "act" + (status === val ? " on" : ""); b.textContent = label; b.title = title;
+    b.onclick = async e => { e.stopPropagation(); await setTrackStatus(key, status === val ? null : val); render(); };
+    return b;
+  };
+  acts.append(mkBtn("★", "saved", "Save"), mkBtn("✓", "applied", "Mark applied"), mkBtn("✕", "hidden", "Hide"));
   const d = jobDays(j);
   const posted = document.createElement("div"); posted.className = "posted";
   posted.textContent = d == null ? "" : d === 0 ? "today" : d === 1 ? "1 day ago" : d < 30 ? d + " days ago" : "30+ days";
   const src = document.createElement("div"); src.className = "sources";
   [...entry.sources].forEach(s => { const p = document.createElement("span"); p.className = "pill"; p.textContent = s; src.appendChild(p); });
-  side.appendChild(posted); side.appendChild(src);
+  side.append(acts, posted, src);
   card.append(av, main, side);
   return card;
 }
@@ -315,7 +373,7 @@ chrome.runtime.onMessage.addListener(msg => {
 });
 
 // filter controls
-["fText", "fExp", "fFresh", "fMode", "fSort"].forEach(id => {
+["fText", "fExp", "fFresh", "fMode", "fSort", "fTrack"].forEach(id => {
   $(id).addEventListener("input", render);
   $(id).addEventListener("change", render);
 });
@@ -396,11 +454,13 @@ $("search").addEventListener("click", searchAll);
 // ---------- CSV (respects current filters) ----------
 $("csv").addEventListener("click", () => {
   const f = currentFilters();
+  const terms = matchTerms();
+  for (const e of merged.values()) e._fit = fitScore(e.job, terms);
   const entries = sortEntries([...merged.values()].filter(e => passes(e, f)), f.sort);
   if (!entries.length) { statusEl.textContent = "Nothing to export."; return; }
   const q = s => `"${String(s == null ? "" : s).replace(/"/g, '""')}"`;
-  const head = "Title,Company,Location,Salary,Experience,Posted,Sources,URL";
-  const body = entries.map(e => { const j = e.job; return [q(j.title), q(j.company), q(j.location || j.locations), q(j.salary), q(j.exp), q(j.posted || j.date), q([...e.sources].join(" | ")), q(j.url)].join(","); }).join("\n");
+  const head = "Title,Company,Location,Salary,Experience,Posted,Match%,Status,Sources,URL";
+  const body = entries.map(e => { const j = e.job; return [q(j.title), q(j.company), q(j.location || j.locations), q(j.salary), q(j.exp), q(j.posted || j.date), q(e._fit || 0), q(track[jobKey(j)] || ""), q([...e.sources].join(" | ")), q(j.url)].join(","); }).join("\n");
   const url = "data:text/csv;charset=utf-8," + encodeURIComponent(head + "\n" + body);
   chrome.downloads.download({ url, filename: `jobfinder-all-${entries.length}.csv`, saveAs: false });
 });
@@ -454,6 +514,7 @@ async function loadWatched() {
 // ---------- init ----------
 (async function init() {
   chrome.runtime.sendMessage({ type: "jf_clear_badge" }).catch(() => {});
+  await loadTrack();
   await loadProfilesDropdown();
   const watched = new URLSearchParams(location.search).get("watched");
   if (watched) { await loadWatched(); return; }

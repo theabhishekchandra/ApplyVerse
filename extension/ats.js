@@ -33,13 +33,53 @@ function _atsRemote(loc, flag) {            // append "(remote)" so jobMode() se
   if (flag && !/remote/i.test(s)) return (s ? s + " " : "") + "(remote)";
   return s;
 }
+// ---- free JD enrichment: strip a description to text, mine salary/experience ----
+function _atsText(html) {
+  if (!html) return "";
+  return String(html).replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
+}
+function _atsSalary(t) {
+  if (!t) return "";
+  // INR: currency symbol must be followed by an actual digit (not a bare comma).
+  let m = t.match(/(?:₹|INR|Rs\.?)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:-|–|to)\s?(?:₹|INR|Rs\.?)?\s?\d[\d,]*(?:\.\d+)?)?\s?(?:LPA|lakhs?|per annum)?/i);
+  if (m) return m[0].replace(/\s+/g, " ").trim();
+  // "12 LPA" / "8-15 LPA"
+  m = t.match(/\d[\d.]*\s?(?:-|–|to)\s?\d[\d.]*\s?(?:LPA|lakhs?)\b/i) || t.match(/\d[\d.]*\s?(?:LPA|lakhs?)\b/i);
+  if (m) return m[0].replace(/\s+/g, " ").trim();
+  // USD: $120,000 / $120k / ranges
+  m = t.match(/\$\s?\d[\d,]*(?:\.\d+)?[kK]?(?:\s?(?:-|–|to)\s?\$?\s?\d[\d,]*(?:\.\d+)?[kK]?)?/);
+  if (m) return m[0].replace(/\s+/g, " ").trim();
+  return "";
+}
+function _atsExp(t) {
+  if (!t) return "";
+  let m = t.match(/(\d{1,2})\s?\+?\s?(?:-|–|to)\s?(\d{1,2})\s?\+?\s?years?/i);
+  if (m) return `${m[1]}-${m[2]} yrs`;
+  m = t.match(/(\d{1,2})\s?\+\s?years?/i);
+  if (m) return `${m[1]}+ yrs`;
+  m = t.match(/(?:minimum|at least|min\.?)\s?(?:of\s?)?(\d{1,2})\+?\s?years?/i)
+    || t.match(/(\d{1,2})\+?\s?years?\s?(?:of\s?)?(?:relevant\s?)?experience/i);
+  if (m) return `${m[1]}+ yrs`;
+  return "";
+}
+// attach jd snippet + backfill salary/exp from any available description text
+function _atsEnrich(rec, descText) {
+  const jd = _atsText(descText);
+  if (jd) {
+    rec.jd = jd.slice(0, 400);
+    if (!rec.salary) rec.salary = _atsSalary(jd);
+    if (!rec.exp) rec.exp = _atsExp(jd);
+  }
+  return rec;
+}
 
 var ATS_PLATFORMS = {
   greenhouse: {
     name: "Greenhouse",
     site: "boards.greenhouse.io",
-    list: token => `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs`,
-    parse: (data, token) => (data.jobs || []).map(j => ({
+    list: token => `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs?content=true`,
+    parse: (data, token) => (data.jobs || []).map(j => _atsEnrich({
       title: j.title || "",
       company: j.company_name || _atsTitleCase(token),
       location: j.location && j.location.name || "",
@@ -48,7 +88,7 @@ var ATS_PLATFORMS = {
       posted: _atsIso(j.updated_at || j.first_published),
       url: j.absolute_url || "",
       department: ""
-    }))
+    }, j.content))
   },
   lever: {
     name: "Lever",
@@ -58,7 +98,7 @@ var ATS_PLATFORMS = {
       const c = j.categories || {};
       const sal = j.salaryRange && (j.salaryRange.min || j.salaryRange.max)
         ? `${j.salaryRange.currency || ""} ${j.salaryRange.min || ""}${j.salaryRange.max ? "–" + j.salaryRange.max : ""}`.trim() : "";
-      return {
+      return _atsEnrich({
         title: j.text || "",
         company: _atsTitleCase(token),
         location: _atsRemote(c.location || (c.allLocations || []).join(", "), /remote/i.test(j.workplaceType || "")),
@@ -67,7 +107,7 @@ var ATS_PLATFORMS = {
         posted: _atsIso(j.createdAt),
         url: j.hostedUrl || j.applyUrl || "",
         department: c.department || c.team || ""
-      };
+      }, j.descriptionPlain || j.description);
     })
   },
   ashby: {
@@ -78,7 +118,7 @@ var ATS_PLATFORMS = {
       const comp = j.compensation && j.compensation.compensationTierSummary || "";
       const secs = (j.secondaryLocations || []).map(s => s && s.location).filter(Boolean);
       const loc = [j.location].concat(secs).filter(Boolean).join(" · ");
-      return {
+      return _atsEnrich({
         title: j.title || "",
         company: _atsTitleCase(token),
         location: _atsRemote(loc, j.isRemote),
@@ -87,7 +127,7 @@ var ATS_PLATFORMS = {
         posted: _atsIso(j.publishedAt),
         url: j.jobUrl || j.applyUrl || "",
         department: j.department || j.team || ""
-      };
+      }, j.descriptionPlain || j.descriptionHtml);
     })
   },
   workable: {
@@ -115,7 +155,7 @@ var ATS_PLATFORMS = {
     name: "Recruitee",
     site: "recruitee.com",
     list: token => `https://${encodeURIComponent(token)}.recruitee.com/api/offers/`,
-    parse: (data, token) => (data.offers || []).map(j => ({
+    parse: (data, token) => (data.offers || []).map(j => _atsEnrich({
       title: j.title || "",
       company: _atsTitleCase(token),
       location: _atsRemote(j.location || [j.city, j.country].filter(Boolean).join(", "), /remote/i.test(j.remote || j.location_type || "")),
@@ -124,7 +164,7 @@ var ATS_PLATFORMS = {
       posted: _atsIso(j.published_at || j.created_at),
       url: j.careers_url || j.careers_apply_url || "",
       department: j.department || ""
-    }))
+    }, j.description))
   }
 };
 

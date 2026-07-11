@@ -67,8 +67,25 @@ Once results are in, a sticky toolbar lets you narrow them **without re-running*
   roles marked remote.
 - **Freshness** — past 24h / 3 days / week / month, from each job's posted date.
   **Lenient**: undated jobs are kept (posted-date data is sparse across boards).
-- **Sort** — New first, Newest posted, Company A–Z, Title A–Z, Salary (high→low).
+- **Sort** — **Best match** (fit score), New first, Newest posted, Company A–Z,
+  Title A–Z, Salary (high→low).
+- **Show** — Active (hides jobs you dismissed) / All / ★ Saved / ✓ Applied.
 - **Source chips** — click to show/hide individual providers.
+
+### Fit scoring, JD enrichment & apply-tracking
+
+- **Fit score** — each card shows a **★ N% match** chip and **Best match** sort
+  ranks by it, scored from how well your keywords/role hit the title (weighted
+  most) and the enriched job description. Refine by editing Keywords.
+- **JD enrichment (free)** — the ATS sweep pulls each posting's **full
+  description** straight from the list response (Lever/Ashby/Recruitee include it;
+  Greenhouse via `content=true`) at **no extra request**, then mines
+  **salary** (₹/LPA/lakhs/$) and **experience** (e.g. "3+ yrs", "5-8 yrs") from
+  it. Click **▾ details** on a card to read the JD snippet.
+- **Apply-tracking** — the **★ / ✓ / ✕** buttons on each card mark a job
+  **Saved / Applied / Hidden**; state persists across runs. Hidden jobs drop out
+  of the default view; use the **Show** filter to review Saved/Applied. CSV
+  export includes **Match%** and **Status** columns.
 
 Filters are **client-side** over the merged results, so they work uniformly
 across providers. **CSV export respects the current filters.**

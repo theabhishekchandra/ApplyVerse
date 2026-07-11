@@ -161,6 +161,21 @@ h1 .count { font-size: 12px; color: var(--muted); font-weight: 600; margin-left:
 .meta { font-size: 11px; padding: 3px 9px; border-radius: 8px; background: rgba(255,255,255,.05); border: 1px solid var(--line-2); color: var(--ink-2); }
 .meta.pay { color: #9be7c4; background: rgba(55,224,160,.1); border-color: rgba(55,224,160,.2); }
 .meta.mode { color: #a9c4ff; }
+.meta.fit { color: #d9ccff; background: rgba(124,92,255,.16); border-color: rgba(124,92,255,.34); font-weight: 700; }
+.jd-toggle { background: none; border: 0; color: var(--accent-2); font-size: 11px; font-weight: 700; cursor: pointer; padding: 3px 4px; }
+.jd-toggle:hover { text-decoration: underline; filter: none; }
+.jd { margin-top: 9px; font-size: 12px; line-height: 1.6; color: var(--ink-2); background: rgba(255,255,255,.03); border: 1px solid var(--line-2); border-radius: 9px; padding: 10px 12px; }
+
+.badge.applied { color: #04121e; background: var(--done); }
+.badge.saved { color: #1a1030; background: var(--run); }
+.card.st-applied { border-color: rgba(127,176,255,.4); }
+.card.st-saved { border-color: rgba(198,180,255,.4); }
+.card.st-hidden { opacity: .55; }
+
+.card-acts { display: flex; gap: 5px; }
+.act { width: 26px; height: 26px; border-radius: 8px; background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 800; cursor: pointer; padding: 0; line-height: 1; }
+.act:hover { border-color: rgba(124,92,255,.5); color: var(--ink); filter: none; }
+.act.on { background: var(--grad-2); border-color: transparent; color: #fff; box-shadow: 0 4px 12px rgba(124,92,255,.4); }
 .card-side { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex: 0 0 auto; }
 .posted { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .sources { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; max-width: 190px; }
