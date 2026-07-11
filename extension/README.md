@@ -50,16 +50,25 @@ The sweep covers **Greenhouse / Lever / Ashby / Personio** (Personio via its
 public XML feed). Recruitee/Workable are per-company (popup) since their
 subdomains can't be seed-guessed.
 
-### ⚡ Google-dork builder + token harvest
+### ⚡ Google-dork builder + Collect
 
 The **⚡ Dork builder** link (top of the ATS group) opens a page that builds
 Google searches targeting company ATS platforms (`site:boards.greenhouse.io`
 etc.) — role synonyms, skills, locations, seniority, aggregator exclusion,
-auto-split into Google-friendly batches. Hit **Open all in Google**, let the
-results load, then click **🌾 Harvest tokens**: it scans your open Google result
-tabs, extracts every company ATS link, and **adds their tokens to the sweep**
-automatically (deduped). The next sweep includes them. It only reads open Google
-tabs and opens Google URLs — no scraping of the job sites themselves.
+auto-split into Google-friendly batches.
+
+**Two-step flow:**
+1. **🔎 Open in Google** — opens each batch search; let the results load.
+2. **📥 Collect jobs** — the tool reads the open result tabs, discovers every
+   company, then **pulls each one's full listings via its ATS API** (rich:
+   salary / experience / description), **de-dupes, and stores them** into your
+   results — exactly like the sweep. Companies on no-API systems (Workday, iCIMS)
+   are captured as basic entries straight from the Google result, so nothing is
+   lost. Discovered tokens are also added to the scheduled sweep.
+
+So a dork run turns into a **stored, filterable, scored job list** in one click —
+not just a pile of browser tabs. It only reads open Google tabs and the public
+ATS APIs; it never scrapes the job sites or bypasses a CAPTCHA.
 
 ### Scraper health / drift detection
 

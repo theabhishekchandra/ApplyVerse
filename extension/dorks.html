@@ -71,11 +71,15 @@
       <div class="out-head">
         <h2>Run these searches <span class="dim" id="batchCount"></span></h2>
         <div style="display:flex;gap:10px;align-items:center">
-          <button class="ghost" id="harvest" title="Scan open Google result tabs for company ATS links and add their tokens to the sweep">🌾 Harvest tokens</button>
-          <button class="primary" id="openAll">🔎 Open all in Google</button>
+          <button class="ghost" id="openAll" title="Open each batch search in a Google tab">🔎 Open in Google</button>
+          <button class="primary" id="collect" title="Scan the open Google result tabs, pull each company's full listings, and store them in your results">📥 Collect jobs</button>
         </div>
       </div>
-      <div id="harvestMsg" class="harvest-msg" hidden></div>
+      <div class="flow-hint"><b>Flow:</b> ① <b>Open in Google</b> and let the results load →
+        ② <b>Collect jobs</b> — the tool reads the result tabs, discovers every company, pulls each
+        one's <b>full listings</b> via its ATS API (salary / experience / description), stores them,
+        and opens your results. Discovered tokens are also added to the scheduled sweep.</div>
+      <div id="collectMsg" class="harvest-msg" hidden></div>
       <div id="queries" class="queries"></div>
 
       <h2 style="margin-top:26px">Companies with no ATS subdomain <span class="dim">(inurl / intitle + aggregator exclusion)</span></h2>

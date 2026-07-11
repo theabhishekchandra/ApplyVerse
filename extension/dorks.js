@@ -201,33 +201,94 @@ $("openAll").addEventListener("click", () => {
   qs.forEach((x, i) => openUrl(googleUrl(x.q), i === 0));
 });
 
-// ---------- harvest company tokens from open Google result tabs ----------
-$("harvest").addEventListener("click", async () => {
-  const msg = $("harvestMsg"); msg.hidden = false; msg.textContent = "Scanning open Google tabs…";
-  if (!(typeof chrome !== "undefined" && chrome.tabs && chrome.scripting)) { msg.textContent = "Harvest needs the extension context."; return; }
-  const tabs = await chrome.tabs.query({ url: ["*://www.google.com/search*", "*://www.google.co.in/search*"] });
-  if (!tabs.length) { msg.textContent = "No open Google search tabs. Click “Open all in Google” first, let results load, then harvest."; return; }
-  const hrefs = [];
+// ---------- Collect: scan Google tabs → pull full listings → store ----------
+// Non-API ATS hosts (no public JSON): captured as basic entries straight from
+// the Google result so nothing is lost. API hosts are fetched in full below.
+const DIRECT_HOSTS = [
+  { re: /(^|\.)myworkdayjobs\.com$/, label: "Workday" },
+  { re: /(^|\.)icims\.com$/, label: "iCIMS" },
+  { re: /(^|\.)taleo\.net$/, label: "Taleo" },
+  { re: /(^|\.)oraclecloud\.com$/, label: "Oracle" },
+  { re: /(^|\.)successfactors\.com$/, label: "SuccessFactors" },
+  { re: /(^|\.)avature\.net$/, label: "Avature" },
+  { re: /(^|\.)dayforcehcm\.com$/, label: "Dayforce" },
+  { re: /(^|\.)smartrecruiters\.com$/, label: "SmartRecruiters" },
+  { re: /(^|\.)jobvite\.com$/, label: "Jobvite" },
+  { re: /(^|\.)teamtailor\.com$/, label: "Teamtailor" }
+];
+function directHost(u) { try { const h = new URL(u).hostname.toLowerCase(); for (const d of DIRECT_HOSTS) if (d.re.test(h)) return { label: d.label, host: h }; return null; } catch (e) { return null; } }
+function coFromHost(host) {
+  const sub = host.split(".")[0].replace(/^(careers|jobs)-?/, "").replace(/-.*$/, "").replace(/^wd\d+$/, "");
+  return sub ? sub.replace(/\b\w/g, c => c.toUpperCase()) : host.split(".")[0];
+}
+function cleanTitle(t) { return (t || "").replace(/\s*[-–|]\s*(Myworkdayjobs\.com|ICIMS|iCIMS|Taleo|Jobvite|SmartRecruiters|Teamtailor|Careers)\s*$/i, "").trim(); }
+const collectMsg = m => { const el = $("collectMsg"); el.hidden = false; el.innerHTML = m; };
+
+async function collectJobs() {
+  if (!(typeof chrome !== "undefined" && chrome.tabs && chrome.scripting)) { collectMsg("Collect needs the extension context (reload the extension)."); return; }
+  collectMsg("Scanning open Google result tabs…");
+  const tabs = await chrome.tabs.query({ url: ["*://www.google.com/search*", "*://www.google.co.in/search*", "*://www.google.com/url*"] });
+  if (!tabs.length) { collectMsg("No open Google search tabs. Click <b>🔎 Open in Google</b> first, let the results load, then Collect."); return; }
+
+  // pull result items (title + link) and every href from each tab
+  const items = [], allHrefs = [];
   for (const t of tabs) {
     try {
       const [r] = await chrome.scripting.executeScript({
         target: { tabId: t.id },
-        func: () => Array.from(document.querySelectorAll("a[href]")).map(a => a.href)
+        func: () => ({
+          items: Array.from(document.querySelectorAll("a h3")).map(h => ({ title: h.textContent, href: (h.closest("a") || {}).href || "" })),
+          all: Array.from(document.querySelectorAll("a[href]")).map(a => a.href)
+        })
       });
-      if (r && r.result) hrefs.push(...r.result);
-    } catch (e) { /* skip tabs we can't script */ }
+      if (r && r.result) { items.push(...(r.result.items || [])); allHrefs.push(...(r.result.all || [])); }
+    } catch (e) { /* CAPTCHA / unscriptable tab — skip, never solve */ }
   }
-  // Google organic links can be direct or /url?q= redirects — normalize both.
-  const urls = hrefs.map(h => { const m = h.match(/[?&]q=(https?[^&]+)/); return m ? decodeURIComponent(m[1]) : h; });
-  const found = {};
-  for (const u of urls) { const t = atsTokenFromUrl(u); if (t) (found[t.platform] = found[t.platform] || new Set()).add(t.token); }
-  const map = {}; let total = 0;
-  for (const k of Object.keys(found)) { map[k] = [...found[k]]; total += map[k].length; }
-  if (!total) { msg.textContent = `Scanned ${tabs.length} tab(s), found no ATS company links. Make sure the results are ATS-targeted (Greenhouse/Lever/Ashby/Workable/Recruitee/Personio).`; return; }
-  const added = await jfAddDiscovered(map);
-  const addedTotal = Object.values(added).reduce((a, b) => a + b, 0);
-  const parts = Object.keys(map).map(k => `${k} ${map[k].length}`).join(", ");
-  msg.innerHTML = `Found <b>${total}</b> tokens (${parts}). Added <b>${addedTotal}</b> new to the sweep. <a href="results.html?watched=0">Run the sweep →</a>`;
-});
+  const deref = h => { const m = (h || "").match(/[?&]q=(https?[^&]+)/); return m ? decodeURIComponent(m[1]) : h; };
+
+  // partition: API-ATS tokens (fetch full listings) vs non-API direct results
+  const tokenMap = {}, directJobs = [], seenUrl = new Set();
+  for (const h of allHrefs) { const t = atsTokenFromUrl(deref(h)); if (t) (tokenMap[t.platform] = tokenMap[t.platform] || new Set()).add(t.token); }
+  for (const it of items) {
+    const url = deref(it.href); if (!url || seenUrl.has(url)) continue;
+    if (atsTokenFromUrl(url)) continue;                       // handled via API below
+    const dh = directHost(url); if (!dh || !it.title) continue;
+    seenUrl.add(url);
+    directJobs.push({ title: cleanTitle(it.title), company: coFromHost(dh.host), location: "", salary: "", exp: "", posted: "", url, department: "", source: dh.label });
+  }
+  const tokenTotal = Object.values(tokenMap).reduce((a, s) => a + s.size, 0);
+  if (!tokenTotal && !directJobs.length) { collectMsg(`Scanned ${tabs.length} tab(s) but found no company job links. Make sure the searches are ATS-targeted and the results have loaded (no CAPTCHA).`); return; }
+
+  // add discovered tokens to the scheduled sweep too
+  const discMap = {}; for (const k of Object.keys(tokenMap)) discMap[k] = [...tokenMap[k]];
+  await jfAddDiscovered(discMap);
+
+  // fetch each discovered company's FULL listings via its ATS API (rich data).
+  // Roles/skills are comma-lists — flatten to spaces and route through the
+  // stopword-filtered path so specific terms (android/kotlin) drive the match,
+  // not generic "engineer"/"developer" (which would pull in unrelated roles).
+  const m = atsMatchers(($("roles").value + " " + $("skills").value).replace(/,/g, " "), "", "");
+  const richJobs = [];
+  for (const platform of Object.keys(tokenMap)) {
+    await atsSweep(platform, {
+      tokens: [...tokenMap[platform]], matchRx: m.matchRx, exRx: m.exRx,
+      onJob: j => richJobs.push(Object.assign({}, j, { source: ATS_PLATFORMS[platform].name })),
+      onProgress: (d, t) => collectMsg(`Fetching ${ATS_PLATFORMS[platform].name}: ${d}/${t} companies · ${richJobs.length + directJobs.length} jobs so far…`)
+    });
+  }
+
+  // merge + dedupe, then store into the shared results (like the sweep does)
+  const all = richJobs.concat(directJobs).filter(j => j.title && j.url);
+  const prev = await jfGet(JF_KEYS.bgResults, []);
+  const byKey = new Map(prev.map(j => [jfJobKey(j), j]));
+  const now = Date.now(); let added = 0;
+  for (const j of all) { const k = jfJobKey(j); if (!byKey.has(k)) { j.firstSeen = now; byKey.set(k, j); added++; } }
+  const store = [...byKey.values()].sort((a, b) => (b.firstSeen || 0) - (a.firstSeen || 0)).slice(0, 800);
+  await chrome.storage.local.set({ [JF_KEYS.bgResults]: store });
+
+  collectMsg(`✅ Collected <b>${all.length}</b> jobs (<b>${added}</b> new) from <b>${tokenTotal}</b> companies${directJobs.length ? " + " + directJobs.length + " direct" : ""}. Opening results…`);
+  chrome.tabs.create({ url: chrome.runtime.getURL("results.html?watched=1"), active: true });
+}
+$("collect").addEventListener("click", collectJobs);
 
 build();

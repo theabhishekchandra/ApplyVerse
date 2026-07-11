@@ -55,20 +55,22 @@ async function runSweep(trigger) {
 
   const store = await chrome.storage.local.get([JF_KEYS.seenBg, JF_KEYS.bgResults, JF_KEYS.newCount]);
   const seen = new Set(store[JF_KEYS.seenBg] || []);
-  const prevByKey = new Map((store[JF_KEYS.bgResults] || []).map(j => [jfJobKey(j), j]));
+  // Accumulate into one shared pool (deduped) rather than replacing — so dork-
+  // collected jobs and prior runs aren't wiped. Keep firstSeen; newest first.
+  const byKey = new Map((store[JF_KEYS.bgResults] || []).map(j => [jfJobKey(j), j]));
   const now = Date.now();
   const newJobs = [];
-  const merged = jobs.map(j => {
+  for (const j of jobs) {
     const k = jfJobKey(j);
-    const old = prevByKey.get(k);
+    const old = byKey.get(k);
     if (!seen.has(k)) newJobs.push(j);
-    return Object.assign({}, j, { firstSeen: old ? old.firstSeen : now, profileId: prof.id, profileName: prof.name });
-  });
+    byKey.set(k, Object.assign({}, j, { firstSeen: old ? old.firstSeen : now, profileId: prof.id, profileName: prof.name }));
+  }
   jobs.forEach(j => seen.add(jfJobKey(j)));
 
   await chrome.storage.local.set({
     [JF_KEYS.seenBg]: [...seen].slice(-9000),
-    [JF_KEYS.bgResults]: merged.sort((a, b) => b.firstSeen - a.firstSeen).slice(0, 500)
+    [JF_KEYS.bgResults]: [...byKey.values()].sort((a, b) => (b.firstSeen || 0) - (a.firstSeen || 0)).slice(0, 800)
   });
 
   if (newJobs.length) {
