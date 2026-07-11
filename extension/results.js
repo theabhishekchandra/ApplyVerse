@@ -433,7 +433,7 @@ async function searchAll() {
     try {
       tab = await chrome.tabs.create({ url: AGG[id].url(shared), active: domMode });
       await waitComplete(tab.id);
-      await sleep(domMode ? 2800 : 1000);
+      await sleep((domMode ? 2800 : 1200) + Math.floor(Math.random() * 900));   // jittered settle — gentle on logged-in sessions
       const probe = await exec(tab.id, () => ({ href: location.href, hasPwd: !!document.querySelector('input[type=password]') }));
       if (looksLoggedOut(id, probe)) {
         setLight(id, "out", "login needed"); keepTab = true;

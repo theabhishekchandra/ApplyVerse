@@ -173,6 +173,26 @@ Options:
 Because the scraper runs **in your logged-in tab's session** (same as pasting in
 the console), site cookies and same-origin requests work exactly as before.
 
+## Account safety (won't get you banned)
+
+The design keeps your logged-in accounts safe:
+
+- **The background watcher only calls public, no-account ATS APIs** (Greenhouse/
+  Lever/Ashby/Personio) — it never touches a logged-in site, so scheduled runs
+  can't affect your LinkedIn/Naukri/etc. accounts.
+- **The DOM scrapers run only when you click** — and they're **human-paced with
+  randomised (jittered) delays** and **modest page caps** (LinkedIn ~1.3–2.6s
+  between pages, Naukri ~1.8–3.3s), so they don't look like a bot hammering the
+  site. LinkedIn uses the **public guest** endpoint, not your authenticated feed.
+- **Non-200 = stop.** If a site returns a rate-limit/error, the scraper stops
+  immediately rather than retrying and drawing attention.
+- **The ATS sweep is bounded** (4 concurrent, jittered gaps, ≤150 jobs/company)
+  so it stays polite to the public APIs — worst case is a temporary IP
+  rate-limit, never an account action.
+- **Never bypasses CAPTCHAs** (see below). If you still want to be extra-cautious
+  on a sensitive account, run only the **ATS sweep** (no logged-in sites) — that
+  surface has zero account exposure.
+
 ## Boundaries (unchanged from the console tools)
 
 - **Never** bypasses or solves CAPTCHAs. Indeed's scraper detects a

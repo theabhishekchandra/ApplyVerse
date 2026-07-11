@@ -102,13 +102,16 @@ var SITES = {
       { k: "location", label: "Location", t: "text", def: "India", ph: "India" },
       { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
-      { k: "maxJobs",  label: "Max jobs", t: "num", def: 300 },
+      { k: "maxJobs",  label: "Max jobs", t: "num", def: 120 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 },
       { k: "fullJD",   label: "Scan full job description (slower)", t: "check", def: false }
     ],
     scrape: async function (cfg) {
       const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const delay = ms => new Promise(r => setTimeout(r, ms));
+      // Human-paced, JITTERED delays: LinkedIn runs in your logged-in session, so
+      // steady/fast request patterns are exactly what anti-abuse flags. Random gaps
+      // + modest caps keep it gentle and protect your account.
+      const delay = (base, spread) => new Promise(r => setTimeout(r, base + Math.floor(Math.random() * (spread || base))));
       const decode = s => new DOMParser().parseFromString(s || "", "text/html").body.textContent.trim();
       const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
       const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
@@ -146,7 +149,7 @@ var SITES = {
             try {
               const dr = await fetch(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${id}`, { credentials: "include" });
               if (dr.status === 200) text = await dr.text();
-              await delay(500);
+              await delay(700, 700);
             } catch (e) {}
           }
           const keep = (!kwRx || kwRx.test(text)) && !(exRx && exRx.test(text));
@@ -157,7 +160,7 @@ var SITES = {
         }
         say(`fetched ~${start + chunks.length} · ${matches.length} match(es)`);
         if (cfg.stop && matches.length >= cfg.stop) { say(`Reached ${cfg.stop} — stopping.`); break; }
-        await delay(900);
+        await delay(1300, 1300);
       }
       return matches;
     }
@@ -170,12 +173,14 @@ var SITES = {
     fields: [
       { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
-      { k: "maxPages", label: "Max pages", t: "num", def: 30 },
+      { k: "maxPages", label: "Max pages", t: "num", def: 15 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
     ],
     scrape: async function (cfg) {
       const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const delay = ms => new Promise(r => setTimeout(r, ms));
+      // Jittered delays — Naukri runs in your logged-in tab; steady auto-clicking
+      // is what anti-scraping flags. Random gaps keep it human-paced.
+      const delay = (base, spread) => new Promise(r => setTimeout(r, base + Math.floor(Math.random() * (spread || 0))));
       const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
       const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
       const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
@@ -239,7 +244,7 @@ var SITES = {
         say(`page ${page}: ${jobs.length} jobs, ${hits} match. Total: ${matches.length}`);
         if (cfg.stop && matches.length >= cfg.stop) { say(`Reached ${cfg.stop} — stopping.`); break; }
         if (page >= cfg.maxPages) break;
-        await delay(1200);
+        await delay(1800, 1500);
         const advanced = await goNext();
         if (!advanced) { say(`Page ${page} was the last page.`); break; }
       }

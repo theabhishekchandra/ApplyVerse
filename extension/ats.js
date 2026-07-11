@@ -17,7 +17,12 @@
    the manifest host_permissions, so the extension page can fetch them directly
    — no tabs required (unlike the DOM-scrape providers). */
 
-var ATS_CAP = { concurrency: 5, perCompany: 200, sweepMs: 12000 };
+// Bounded + gently paced so a sweep never hammers a public API into a
+// rate-limit. concurrency = simultaneous company fetches; pauseMs = jittered
+// gap each worker waits between companies (human-ish, polite).
+var ATS_CAP = { concurrency: 4, perCompany: 150, pauseMs: 250 };
+function _atsSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function _atsJitter(base) { return base + Math.floor(Math.random() * base); }
 
 function _atsTitleCase(t) {
   return (t || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -283,6 +288,7 @@ async function atsSweep(platform, opts) {
       done++;
       if (res.ok) for (const j of res.jobs) { found++; if (opts.onJob) opts.onJob(j); }
       if (opts.onProgress) opts.onProgress(done, total, found);
+      if (i < tokens.length) await _atsSleep(_atsJitter(ATS_CAP.pauseMs));   // polite, jittered gap
     }
   };
   const n = Math.min(opts.concurrency || ATS_CAP.concurrency, tokens.length || 1);
