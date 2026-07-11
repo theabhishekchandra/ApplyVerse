@@ -19,15 +19,18 @@ let activeSources = null;     // Set of source names shown (null = all)
 let renderTimer = null;
 
 // ---------- derived fields for filtering ----------
-function jobExp(job) {                       // -> min years, or null if unknown
-  const m = (job.exp || "").match(/(\d+)\s*(?:-\s*(\d+))?\s*\+?\s*(?:yrs?|years?)/i);
-  if (m) return parseInt(m[1]);
+// experience as a [minYears, maxYears] range (or null if unknown) so bucket
+// matching can overlap — e.g. "5-8 yrs" counts as BOTH mid and senior.
+function jobExpRange(job) {
+  const m = (job.exp || "").match(/(\d+)\s*(?:-\s*(\d+))?\s*(\+)?\s*(?:yrs?|years?)/i);
+  if (m) { const lo = parseInt(m[1]); const hi = m[2] ? parseInt(m[2]) : (m[3] ? 99 : lo); return [lo, hi]; }
   const t = (job.title || "").toLowerCase();
-  if (/intern|fresher|graduate|trainee|entry[- ]level/.test(t)) return 0;
-  if (/\bjr\b|junior|associate/.test(t)) return 1;
-  if (/senior|\bsr\b|lead|principal|staff|architect|head of/.test(t)) return 6;
+  if (/intern|fresher|graduate|trainee|entry[- ]level|\b0\s*[-–]\s*1\b/.test(t)) return [0, 1];
+  if (/\bjr\b|junior|associate/.test(t)) return [1, 3];
+  if (/senior|\bsr\b|lead|principal|staff|architect|head of|vp\b/.test(t)) return [6, 99];
   return null;
 }
+const EXP_BUCKETS = { fresher: [0, 1], junior: [1, 3], mid: [3, 6], senior: [6, 99] };
 function jobDays(job) {                       // -> days since posted, or null
   const raw = (job.date || job.posted || "").toString().trim();
   if (!raw) return null;
@@ -184,17 +187,16 @@ function passes(entry, f) {
   if (f.onlyNew && !entry.isNew) return false;
   if (activeSources && ![...entry.sources].some(s => activeSources.has(s))) return false;
   if (f.text && !((j.title || "").toLowerCase().includes(f.text) || (j.company || "").toLowerCase().includes(f.text))) return false;
+  // Experience — STRICT (unknown excluded), range-overlap against the bucket.
   if (f.exp !== "any") {
-    const y = jobExp(j);
-    if (y != null) {
-      if (f.exp === "fresher" && !(y <= 1)) return false;
-      if (f.exp === "junior" && !(y >= 1 && y < 3)) return false;
-      if (f.exp === "mid" && !(y >= 3 && y < 6)) return false;
-      if (f.exp === "senior" && !(y >= 6)) return false;
-    }
+    const r = jobExpRange(j); if (!r) return false;
+    const b = EXP_BUCKETS[f.exp];
+    if (!(r[0] <= b[1] && r[1] >= b[0])) return false;
   }
+  // Work mode — STRICT (unknown excluded): "Remote" shows only remote roles.
+  if (f.mode !== "any") { if (jobMode(j) !== f.mode) return false; }
+  // Freshness — LENIENT (undated kept): posted-date data is sparse across boards.
   if (f.fresh) { const d = jobDays(j); if (d != null && d > f.fresh) return false; }
-  if (f.mode !== "any") { const m = jobMode(j); if (m != null && m !== f.mode) return false; }
   return true;
 }
 function sortEntries(list, sort) {
