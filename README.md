@@ -113,18 +113,15 @@ flowchart LR
 
 ## 📸 Screenshots
 
-<p align="center"><img src="docs/images/banner.svg" alt="ApplyVerse" width="80%"></p>
+**Unified dashboard** — every source merged, de-duplicated, fit-scored, and
+filterable, with salary/experience/work-mode badges and apply-tracking.
 
-> **Want product screenshots here?** Load the extension (2 min, above), open the
-> **Search all** dashboard, and drop your images into `docs/images/` as
-> `dashboard.png`, `dork-builder.png`, and `watched.png` — then uncomment the block
-> below. (Screens are omitted from the repo by default to keep it light.)
+![ApplyVerse unified dashboard](docs/images/dashboard.png)
 
-<!--
-| Unified dashboard | Dork builder | Watched results |
-|---|---|---|
-| ![Dashboard](docs/images/dashboard.png) | ![Dork builder](docs/images/dork-builder.png) | ![Watched](docs/images/watched.png) |
--->
+**Google-dork builder** — target company ATS platforms, tune role/skills/location,
+then one-click **Auto-collect** to pull and store their listings.
+
+![ApplyVerse Google-dork builder](docs/images/dork-builder.png)
 
 ## 🛡 Account safety
 
