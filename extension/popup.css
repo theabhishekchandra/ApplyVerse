@@ -1,0 +1,76 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  width: 380px;
+  max-height: 600px;
+  font: 13px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #0e1420;
+  color: #e7edf7;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  padding: 10px 12px;
+  background: #16203a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #26324f;
+}
+.brand { font-weight: 700; }
+.count { font-size: 11px; opacity: .75; }
+.body { padding: 10px 12px; overflow: auto; }
+.lbl { display: block; margin: 4px 0 3px; font-size: 11px; opacity: .8; }
+select, input[type="text"], input[type="number"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #33436b;
+  border-radius: 6px;
+  background: #0a1120;
+  color: #e7edf7;
+  font-size: 12px;
+}
+.note { margin: 6px 0 2px; font-size: 11px; opacity: .7; line-height: 1.35; }
+.warn {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  color: #ffd27a;
+  background: #3a2c0e;
+  border: 1px solid #6b5216;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+#form > div { margin-top: 7px; }
+.two { display: flex; gap: 8px; }
+.two > div { flex: 1; }
+.chk { display: flex; align-items: center; gap: 6px; margin: 6px 0; font-size: 12px; cursor: pointer; }
+.opts { margin-top: 8px; padding-top: 6px; border-top: 1px solid #26324f; }
+.row { display: flex; gap: 8px; margin-top: 10px; }
+button {
+  flex: 1;
+  padding: 9px;
+  border: 0;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+button.primary { background: #3d7bff; color: #fff; }
+button.ghost { background: #1c2842; color: #cdd7ee; flex: 0 0 auto; padding: 9px 12px; }
+button:disabled { opacity: .5; cursor: default; }
+.status { margin-top: 10px; font-size: 12px; min-height: 16px; opacity: .9; }
+.list { margin-top: 6px; }
+.item { padding: 6px 0; border-bottom: 1px solid #1c2436; }
+.item a { color: #7fb0ff; text-decoration: none; font-weight: 600; }
+.item .sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+.badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #04120c;
+  background: #35d07f;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}

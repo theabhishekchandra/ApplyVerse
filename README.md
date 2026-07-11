@@ -9,6 +9,12 @@ set your filters, hit **▶ Start**, and it collects matching jobs and downloads
 No install, no server, no build step. Just a folder of scripts you paste when
 you need them.
 
+> **Prefer a UI over pasting?** There's now a **Chrome extension** in
+> [`extension/`](./extension) that wraps all 12 tools: click the toolbar icon,
+> pick a site, set filters, hit Start — no DevTools. It also flags **only what's
+> new since your last run** and exports CSV. See
+> [`extension/README.md`](./extension/README.md) to load it.
+
 > **Note on ethics/limits:** these run in *your own logged-in browser session*
 > at human-ish pacing. They **never bypass CAPTCHAs or bot-detection** — if a
 > site challenges the session, the tool stops and tells you, rather than working

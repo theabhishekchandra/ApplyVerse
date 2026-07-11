@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Job Finder",
+  "version": "1.0.0",
+  "description": "Search developer jobs across 12 boards from one popup — filter by keywords, see only-new-since-last-run, export CSV.",
+  "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads"],
+  "host_permissions": [
+    "https://*.ziprecruiter.com/*",
+    "https://*.linkedin.com/*",
+    "https://*.naukri.com/*",
+    "https://*.wellfound.com/*",
+    "https://*.cutshort.io/*",
+    "https://*.instahyre.com/*",
+    "https://*.workatastartup.com/*",
+    "https://careers.smartrecruiters.com/*",
+    "https://api.smartrecruiters.com/*",
+    "https://*.shine.com/*",
+    "https://*.indeed.com/*",
+    "https://*.glassdoor.co.in/*",
+    "https://*.glassdoor.com/*",
+    "https://*.foundit.in/*"
+  ],
+  "action": {
+    "default_title": "Job Finder",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+}

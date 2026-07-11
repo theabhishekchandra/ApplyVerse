@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span class="brand">🔎 Job Finder</span>
+    <span id="count" class="count"></span>
+  </header>
+
+  <div class="body">
+    <label class="lbl">Site</label>
+    <select id="site"></select>
+    <div id="note" class="note"></div>
+    <div id="warn" class="warn" hidden></div>
+
+    <div id="form"></div>
+
+    <div class="opts">
+      <label class="chk"><input type="checkbox" id="onlyNew"> Only new since last run</label>
+      <label class="chk"><input type="checkbox" id="openTabs"> Open matches in new tabs</label>
+    </div>
+
+    <div class="row">
+      <button id="start" class="primary">▶ Start</button>
+      <button id="stop" class="ghost" hidden>■ Stop</button>
+      <button id="csv" class="ghost" disabled>⬇ CSV</button>
+    </div>
+
+    <div id="status" class="status"></div>
+    <div id="list" class="list"></div>
+  </div>
+
+  <script src="sites.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
