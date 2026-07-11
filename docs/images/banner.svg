@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b6bff"/>
+      <stop offset="0.55" stop-color="#3ea6ff"/>
+      <stop offset="1.2" stop-color="#34e2d0"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0.85" cy="0.1" r="0.6">
+      <stop offset="0" stop-color="#3ea6ff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#3ea6ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.08" cy="1.05" r="0.6">
+      <stop offset="0" stop-color="#34e2d0" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#34e2d0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="340" rx="20" fill="#06080f"/>
+  <rect width="1200" height="340" rx="20" fill="url(#glow1)"/>
+  <rect width="1200" height="340" rx="20" fill="url(#glow2)"/>
+  <rect x="1" y="1" width="1198" height="338" rx="19" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+
+  <!-- logo mark -->
+  <g transform="translate(72,116)">
+    <rect width="108" height="108" rx="28" fill="url(#brand)"/>
+    <circle cx="46" cy="46" r="26" fill="none" stroke="#06080f" stroke-width="9"/>
+    <line x1="65" y1="65" x2="86" y2="86" stroke="#06080f" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <!-- wordmark + tagline -->
+  <text x="212" y="150" font-size="62" font-weight="800" fill="#ffffff" letter-spacing="-1">ApplyVerse</text>
+  <text x="214" y="192" font-size="23" font-weight="500" fill="#c3cce4">Find developer jobs everywhere — job boards + company ATS, in one place.</text>
+
+  <!-- feature pills -->
+  <g font-size="17" font-weight="700">
+    <g transform="translate(214,224)">
+      <rect width="204" height="42" rx="21" fill="#0e1424" stroke="#7c5cff" stroke-opacity="0.5"/>
+      <text x="26" y="27" fill="#cdbcff">⚡ Aggregate boards</text>
+    </g>
+    <g transform="translate(430,224)">
+      <rect width="150" height="42" rx="21" fill="#0e1424" stroke="#3ea6ff" stroke-opacity="0.5"/>
+      <text x="24" y="27" fill="#bfe0ff">🎯 ATS sweep</text>
+    </g>
+    <g transform="translate(592,224)">
+      <rect width="172" height="42" rx="21" fill="#0e1424" stroke="#34e2d0" stroke-opacity="0.5"/>
+      <text x="22" y="27" fill="#b6f0e8">🔎 Dork builder</text>
+    </g>
+    <g transform="translate(776,224)">
+      <rect width="200" height="42" rx="21" fill="#0e1424" stroke="#7c5cff" stroke-opacity="0.5"/>
+      <text x="24" y="27" fill="#cdbcff">🔔 Watch &amp; notify</text>
+    </g>
+  </g>
+</svg>
