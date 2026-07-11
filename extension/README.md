@@ -57,18 +57,28 @@ Google searches targeting company ATS platforms (`site:boards.greenhouse.io`
 etc.) — role synonyms, skills, locations, seniority, aggregator exclusion,
 auto-split into Google-friendly batches.
 
-**Two-step flow:**
-1. **🔎 Open in Google** — opens each batch search; let the results load.
-2. **📥 Collect jobs** — the tool reads the open result tabs, discovers every
-   company, then **pulls each one's full listings via its ATS API** (rich:
-   salary / experience / description), **de-dupes, and stores them** into your
-   results — exactly like the sweep. Companies on no-API systems (Workday, iCIMS)
-   are captured as basic entries straight from the Google result, so nothing is
-   lost. Discovered tokens are also added to the scheduled sweep.
+**⚡ Auto-collect (one click)** — opens each batch search in a **background tab**,
+reads it, pulls every company's **full listings** via its ATS API, de-dupes,
+stores, and opens your results. Human-paced; if Google shows a verification page
+it **stops** (never bypassed). Prefer to watch? Use **🔎 Open in Google** →
+**📥 Collect open** instead.
 
-So a dork run turns into a **stored, filterable, scored job list** in one click —
-not just a pile of browser tabs. It only reads open Google tabs and the public
-ATS APIs; it never scrapes the job sites or bypasses a CAPTCHA.
+Either way the tool:
+- **Pulls full listings** for API companies (Greenhouse/Lever/Ashby/Workable/
+  Recruitee/Personio) with salary / experience / description enrichment.
+- **Captures no-API results** (Workday, iCIMS, Taleo…) from the Google result and
+  **enriches** them best-effort by fetching the posting page.
+- **Filters by your Locations** — an India filter keeps India + purely-remote +
+  unknown, and drops roles that name another place (even "Sydney (remote)").
+- **De-dupes and stores** into the shared results pool (like the sweep), and adds
+  discovered tokens to the scheduled sweep.
+
+**Presets & memory** — the dork form is remembered across sessions, and you can
+**save named presets** (e.g. "Android · India") to switch between.
+
+So a dork run becomes a **stored, filterable, scored, location-tuned job list**
+in one click — not a pile of browser tabs. It only reads open Google tabs and
+public ATS APIs; it never scrapes the job sites or bypasses a CAPTCHA.
 
 ### Scraper health / drift detection
 

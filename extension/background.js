@@ -39,6 +39,7 @@ async function runSweep(trigger) {
   if (!prof) { const r = { at: Date.now(), ok: false, reason: "no saved profile", total: 0, new: 0 }; await chrome.storage.local.set({ [JF_KEYS.lastRun]: r }); return r; }
 
   const m = atsMatchers(prof.role, prof.keywords, prof.exclude);
+  const locRx = atsLocRx(prof.location);
   const discovered = await jfGetDiscovered();
   const collected = new Map();
   for (const key of s.platforms) {
@@ -46,7 +47,7 @@ async function runSweep(trigger) {
     try {
       await atsSweep(key, {
         tokens: [...new Set([...(ATS_SEED[key] || []), ...(discovered[key] || [])])],
-        matchRx: m.matchRx, exRx: m.exRx,
+        matchRx: m.matchRx, exRx: m.exRx, locRx,
         onJob: j => { const k = jfJobKey(j); if (!collected.has(k)) collected.set(k, Object.assign({}, j, { source: ATS_PLATFORMS[key].name })); }
       });
     } catch (e) { /* keep going with other platforms */ }

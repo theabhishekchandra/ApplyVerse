@@ -267,6 +267,16 @@ async function atsFetchCompany(platform, token, opts) {
       return true;
     });
   }
+  if (opts.locRx) {
+    // Keep jobs that match a wanted place, have no stated location (unknown), or
+    // are *purely* remote ("Remote" with no other place). Drop roles that name a
+    // specific OTHER place — even "Sydney (remote)" — so an India filter stays clean.
+    jobs = jobs.filter(j => {
+      const L = (j.location || "").trim();
+      if (!L || opts.locRx.test(L)) return true;
+      return L.replace(/remote/ig, "").replace(/[()\-,./\s]/g, "") === "";
+    });
+  }
   if (opts.perCompany) jobs = jobs.slice(0, opts.perCompany);
   return { ok: true, status: 200, jobs };
 }
@@ -283,7 +293,7 @@ async function atsSweep(platform, opts) {
       if (opts.signal && opts.signal.aborted) return;
       const token = tokens[i++];
       const res = await atsFetchCompany(platform, token, {
-        matchRx: opts.matchRx, exRx: opts.exRx, perCompany: opts.perCompany || ATS_CAP.perCompany, signal: opts.signal
+        matchRx: opts.matchRx, exRx: opts.exRx, locRx: opts.locRx, perCompany: opts.perCompany || ATS_CAP.perCompany, signal: opts.signal
       });
       done++;
       if (res.ok) for (const j of res.jobs) { found++; if (opts.onJob) opts.onJob(j); }
@@ -305,6 +315,13 @@ var ATS_STOPWORDS = new Set([
   "developer", "engineer", "software", "senior", "junior", "lead", "staff",
   "principal", "manager", "jobs", "job", "work", "the", "and", "for"
 ]);
+// Build a location regex from a comma/newline list of places (keeps multi-word
+// city names). null = no location filter.
+function atsLocRx(locText) {
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const terms = (locText || "").split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 1);
+  return terms.length ? new RegExp(terms.map(esc).join("|"), "i") : null;
+}
 function atsMatchers(role, keywords, exclude) {
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const clean = arr => arr.map(s => s.trim()).filter(s => s.length > 2);

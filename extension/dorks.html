@@ -21,6 +21,13 @@
       several Google-friendly searches (one mega-query over-narrows). Grab the company
       token from each result URL and add it to the ATS sweep.</p>
 
+    <div class="preset-bar">
+      <select id="presetSel"><option value="">— Saved presets —</option></select>
+      <button class="ghost small" id="savePreset">＋ Save preset</button>
+      <button class="ghost small" id="delPreset" title="Delete selected preset">🗑</button>
+      <span class="dim" style="margin-left:auto">Your settings are remembered automatically.</span>
+    </div>
+
     <div class="grid">
       <div class="panel">
         <h2>What & where</h2>
@@ -72,14 +79,17 @@
         <h2>Run these searches <span class="dim" id="batchCount"></span></h2>
         <div style="display:flex;gap:10px;align-items:center">
           <button class="ghost" id="openAll" title="Open each batch search in a Google tab">🔎 Open in Google</button>
-          <button class="primary" id="collect" title="Scan the open Google result tabs, pull each company's full listings, and store them in your results">📥 Collect jobs</button>
+          <button class="ghost" id="collect" title="Scan the ALREADY-OPEN Google result tabs, pull each company's full listings, and store them">📥 Collect open</button>
+          <button class="primary" id="auto" title="Open each search in a background tab, scan it, and collect — all automatically">⚡ Auto-collect</button>
         </div>
       </div>
-      <div class="flow-hint"><b>Flow:</b> ① <b>Open in Google</b> and let the results load →
-        ② <b>Collect jobs</b> — the tool reads the result tabs, discovers every company, pulls each
-        one's <b>full listings</b> via its ATS API (salary / experience / description), stores them,
-        and opens your results. Discovered tokens are also added to the scheduled sweep.</div>
+      <div class="flow-hint"><b>⚡ Auto-collect</b> does it all in one click: opens each search in a
+        background tab, reads the results, pulls every company's <b>full listings</b> via its ATS API
+        (salary / experience / location-filtered), de-dupes, stores them, and opens your results.
+        Prefer to watch it? Use <b>🔎 Open in Google</b> → <b>📥 Collect open</b>. Discovered tokens
+        also feed the scheduled sweep. It never bypasses a CAPTCHA — it stops if Google shows one.</div>
       <div id="collectMsg" class="harvest-msg" hidden></div>
+      <div id="collectBar" class="collect-bar" hidden><div class="fill" id="collectFill"></div></div>
       <div id="queries" class="queries"></div>
 
       <h2 style="margin-top:26px">Companies with no ATS subdomain <span class="dim">(inurl / intitle + aggregator exclusion)</span></h2>

@@ -189,6 +189,7 @@ function build() {
   else qs.forEach((x, i) => list.appendChild(queryRow(`Batch ${i + 1} — ${x.label}`, x.q)));
   $("genq").innerHTML = ""; $("genq").appendChild(queryRow("Company career pages (no ATS)", genericQuery()));
   $("batchCount").textContent = qs.length ? `${qs.length} search${qs.length > 1 ? "es" : ""} · ${selectedPlatforms().length} platforms` : "";
+  if (typeof persist === "function") persist();
 }
 
 // ---------- wire ----------
@@ -223,72 +224,171 @@ function coFromHost(host) {
 }
 function cleanTitle(t) { return (t || "").replace(/\s*[-–|]\s*(Myworkdayjobs\.com|ICIMS|iCIMS|Taleo|Jobvite|SmartRecruiters|Teamtailor|Careers)\s*$/i, "").trim(); }
 const collectMsg = m => { const el = $("collectMsg"); el.hidden = false; el.innerHTML = m; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function setBar(done, total) {
+  const bar = $("collectBar"), fill = $("collectFill");
+  if (total <= 0) { bar.hidden = true; return; }
+  bar.hidden = false; fill.style.width = Math.round(100 * Math.min(done, total) / total) + "%";
+}
+const derefUrl = h => { const m = (h || "").match(/[?&]q=(https?[^&]+)/); return m ? decodeURIComponent(m[1]) : h; };
 
-async function collectJobs() {
-  if (!(typeof chrome !== "undefined" && chrome.tabs && chrome.scripting)) { collectMsg("Collect needs the extension context (reload the extension)."); return; }
-  collectMsg("Scanning open Google result tabs…");
-  const tabs = await chrome.tabs.query({ url: ["*://www.google.com/search*", "*://www.google.co.in/search*", "*://www.google.com/url*"] });
-  if (!tabs.length) { collectMsg("No open Google search tabs. Click <b>🔎 Open in Google</b> first, let the results load, then Collect."); return; }
-
-  // pull result items (title + link) and every href from each tab
-  const items = [], allHrefs = [];
+// Scrape a set of tabs for {title, href} result items + every href, and flag CAPTCHA.
+async function gatherFromTabs(tabs) {
+  const items = [], allHrefs = []; let captcha = false;
   for (const t of tabs) {
     try {
       const [r] = await chrome.scripting.executeScript({
         target: { tabId: t.id },
         func: () => ({
           items: Array.from(document.querySelectorAll("a h3")).map(h => ({ title: h.textContent, href: (h.closest("a") || {}).href || "" })),
-          all: Array.from(document.querySelectorAll("a[href]")).map(a => a.href)
+          all: Array.from(document.querySelectorAll("a[href]")).map(a => a.href),
+          captcha: /\/sorry\//.test(location.href) || /unusual traffic|not a robot|recaptcha/i.test((document.body ? document.body.innerText : "").slice(0, 4000))
         })
       });
-      if (r && r.result) { items.push(...(r.result.items || [])); allHrefs.push(...(r.result.all || [])); }
-    } catch (e) { /* CAPTCHA / unscriptable tab — skip, never solve */ }
+      if (r && r.result) { items.push(...(r.result.items || [])); allHrefs.push(...(r.result.all || [])); if (r.result.captcha) captcha = true; }
+    } catch (e) { /* unscriptable tab — skip */ }
   }
-  const deref = h => { const m = (h || "").match(/[?&]q=(https?[^&]+)/); return m ? decodeURIComponent(m[1]) : h; };
+  return { items, allHrefs, captcha };
+}
 
-  // partition: API-ATS tokens (fetch full listings) vs non-API direct results
+// Best-effort enrich a non-API "direct" job by fetching its page for salary/exp.
+async function enrichDirect(job) {
+  try {
+    const r = await fetch(job.url, { headers: { Accept: "text/html" } });
+    if (r.status !== 200) return job;
+    const txt = _atsText(await r.text());
+    if (txt) { if (!job.salary) job.salary = _atsSalary(txt); if (!job.exp) job.exp = _atsExp(txt); }
+  } catch (e) { /* cross-origin / JS-rendered page — keep basic entry */ }
+  return job;
+}
+
+// Turn scraped results into stored jobs: API companies fetched in full,
+// non-API captured (and enriched), deduped + stored, results opened.
+async function processCollected(items, allHrefs) {
   const tokenMap = {}, directJobs = [], seenUrl = new Set();
-  for (const h of allHrefs) { const t = atsTokenFromUrl(deref(h)); if (t) (tokenMap[t.platform] = tokenMap[t.platform] || new Set()).add(t.token); }
+  for (const h of allHrefs) { const t = atsTokenFromUrl(derefUrl(h)); if (t) (tokenMap[t.platform] = tokenMap[t.platform] || new Set()).add(t.token); }
   for (const it of items) {
-    const url = deref(it.href); if (!url || seenUrl.has(url)) continue;
-    if (atsTokenFromUrl(url)) continue;                       // handled via API below
+    const url = derefUrl(it.href); if (!url || seenUrl.has(url)) continue;
+    if (atsTokenFromUrl(url)) continue;
     const dh = directHost(url); if (!dh || !it.title) continue;
     seenUrl.add(url);
     directJobs.push({ title: cleanTitle(it.title), company: coFromHost(dh.host), location: "", salary: "", exp: "", posted: "", url, department: "", source: dh.label });
   }
   const tokenTotal = Object.values(tokenMap).reduce((a, s) => a + s.size, 0);
-  if (!tokenTotal && !directJobs.length) { collectMsg(`Scanned ${tabs.length} tab(s) but found no company job links. Make sure the searches are ATS-targeted and the results have loaded (no CAPTCHA).`); return; }
+  if (!tokenTotal && !directJobs.length) { setBar(0, 0); collectMsg("No company job links found. Make sure the searches are ATS-targeted and results loaded (no CAPTCHA)."); return; }
 
-  // add discovered tokens to the scheduled sweep too
   const discMap = {}; for (const k of Object.keys(tokenMap)) discMap[k] = [...tokenMap[k]];
   await jfAddDiscovered(discMap);
 
-  // fetch each discovered company's FULL listings via its ATS API (rich data).
-  // Roles/skills are comma-lists — flatten to spaces and route through the
-  // stopword-filtered path so specific terms (android/kotlin) drive the match,
-  // not generic "engineer"/"developer" (which would pull in unrelated roles).
+  // fetch full listings for API companies — role/skill matched + location filtered
   const m = atsMatchers(($("roles").value + " " + $("skills").value).replace(/,/g, " "), "", "");
+  const locRx = atsLocRx($("locs").value);
   const richJobs = [];
+  let doneCos = 0;
   for (const platform of Object.keys(tokenMap)) {
     await atsSweep(platform, {
-      tokens: [...tokenMap[platform]], matchRx: m.matchRx, exRx: m.exRx,
+      tokens: [...tokenMap[platform]], matchRx: m.matchRx, exRx: m.exRx, locRx,
       onJob: j => richJobs.push(Object.assign({}, j, { source: ATS_PLATFORMS[platform].name })),
-      onProgress: (d, t) => collectMsg(`Fetching ${ATS_PLATFORMS[platform].name}: ${d}/${t} companies · ${richJobs.length + directJobs.length} jobs so far…`)
+      onProgress: (d, t) => { setBar(doneCos + d, tokenTotal); collectMsg(`Fetching ${ATS_PLATFORMS[platform].name}: ${doneCos + d}/${tokenTotal} companies · ${richJobs.length + directJobs.length} jobs…`); }
     });
+    doneCos += tokenMap[platform].size;
   }
 
-  // merge + dedupe, then store into the shared results (like the sweep does)
-  const all = richJobs.concat(directJobs).filter(j => j.title && j.url);
+  // enrich the non-API direct jobs (bounded, best-effort)
+  if (directJobs.length) {
+    collectMsg(`Enriching ${directJobs.length} direct listing(s)…`);
+    for (let i = 0; i < directJobs.length; i++) { await enrichDirect(directJobs[i]); if (locRx && directJobs[i].location && !locRx.test(directJobs[i].location) && !/remote/i.test(directJobs[i].location)) directJobs[i]._drop = true; }
+  }
+
+  const all = richJobs.concat(directJobs.filter(j => !j._drop)).filter(j => j.title && j.url);
   const prev = await jfGet(JF_KEYS.bgResults, []);
   const byKey = new Map(prev.map(j => [jfJobKey(j), j]));
   const now = Date.now(); let added = 0;
   for (const j of all) { const k = jfJobKey(j); if (!byKey.has(k)) { j.firstSeen = now; byKey.set(k, j); added++; } }
-  const store = [...byKey.values()].sort((a, b) => (b.firstSeen || 0) - (a.firstSeen || 0)).slice(0, 800);
-  await chrome.storage.local.set({ [JF_KEYS.bgResults]: store });
+  await chrome.storage.local.set({ [JF_KEYS.bgResults]: [...byKey.values()].sort((a, b) => (b.firstSeen || 0) - (a.firstSeen || 0)).slice(0, 800) });
 
-  collectMsg(`✅ Collected <b>${all.length}</b> jobs (<b>${added}</b> new) from <b>${tokenTotal}</b> companies${directJobs.length ? " + " + directJobs.length + " direct" : ""}. Opening results…`);
+  setBar(1, 1);
+  collectMsg(`✅ Collected <b>${all.length}</b> jobs (<b>${added}</b> new) from <b>${tokenTotal}</b> companies${directJobs.length ? " + " + directJobs.filter(j => !j._drop).length + " direct" : ""}. Opening results…`);
   chrome.tabs.create({ url: chrome.runtime.getURL("results.html?watched=1"), active: true });
 }
-$("collect").addEventListener("click", collectJobs);
 
-build();
+// Manual: collect from ALREADY-OPEN Google tabs.
+async function collectJobs() {
+  if (!(typeof chrome !== "undefined" && chrome.tabs && chrome.scripting)) { collectMsg("Collect needs the extension context (reload the extension)."); return; }
+  collectMsg("Scanning open Google result tabs…");
+  const tabs = await chrome.tabs.query({ url: ["*://www.google.com/search*", "*://www.google.co.in/search*", "*://www.google.com/url*"] });
+  if (!tabs.length) { collectMsg("No open Google search tabs. Use <b>🔎 Open in Google</b> first (or <b>⚡ Auto-collect</b>)."); return; }
+  const g = await gatherFromTabs(tabs);
+  if (g.captcha && !g.items.length) { collectMsg("⚠ Google is showing a verification page. I won't bypass it — solve it in the tab, then Collect again."); return; }
+  await processCollected(g.items, g.allHrefs);
+}
+
+// Auto: open each batch in a background tab, scan, close — then collect.
+async function autoCollect() {
+  if (!(typeof chrome !== "undefined" && chrome.tabs && chrome.scripting)) { collectMsg("Auto-collect needs the extension context (reload the extension)."); return; }
+  const qs = atsQueries();
+  if (!qs.length) { collectMsg("Select at least one ATS platform first."); return; }
+  const items = [], allHrefs = [];
+  for (let i = 0; i < qs.length; i++) {
+    collectMsg(`Searching batch ${i + 1}/${qs.length} in the background…`); setBar(i, qs.length + 1);
+    let tab;
+    try {
+      tab = await chrome.tabs.create({ url: googleUrl(qs[i].q), active: false });
+      await sleep(2600 + Math.floor(Math.random() * 1400));    // human-paced settle
+      const g = await gatherFromTabs([tab]);
+      items.push(...g.items); allHrefs.push(...g.allHrefs);
+      if (g.captcha && !g.items.length) { collectMsg("⚠ Google showed a verification page — stopping (never bypassed). Use <b>🔎 Open in Google</b> + <b>📥 Collect open</b> and solve it yourself."); setBar(0, 0); try { await chrome.tabs.update(tab.id, { active: true }); } catch (e) {} return; }
+    } catch (e) { /* skip a failed batch */ }
+    finally { if (tab) { try { await chrome.tabs.remove(tab.id); } catch (e) {} } }
+    if (i < qs.length - 1) await sleep(900 + Math.floor(Math.random() * 800));  // gap between searches
+  }
+  await processCollected(items, allHrefs);
+}
+
+$("collect").addEventListener("click", collectJobs);
+$("auto").addEventListener("click", autoCollect);
+
+// ---------- persist form + named presets ----------
+function getConfig() {
+  return {
+    roles: $("roles").value, skills: $("skills").value, locs: $("locs").value,
+    level: $("level").value, perBatch: $("perBatch").value, reqSkills: $("reqSkills").checked,
+    platforms: ATS.filter(a => cbOf[a.key].checked).map(a => a.key)
+  };
+}
+function applyConfig(c) {
+  if (!c) { build(); return; }
+  if (c.roles != null) $("roles").value = c.roles;
+  if (c.skills != null) $("skills").value = c.skills;
+  if (c.locs != null) $("locs").value = c.locs;
+  if (c.level) $("level").value = c.level;
+  if (c.perBatch) $("perBatch").value = c.perBatch;
+  if (typeof c.reqSkills === "boolean") $("reqSkills").checked = c.reqSkills;
+  if (Array.isArray(c.platforms)) { const set = new Set(c.platforms); ATS.forEach(a => { cbOf[a.key].checked = set.has(a.key); cbOf[a.key].closest(".chk").classList.toggle("on", set.has(a.key)); }); }
+  build();
+}
+const hasStorage = typeof chrome !== "undefined" && chrome.storage && chrome.storage.local;
+let persistTimer = null;
+function persist() { if (!hasStorage) return; clearTimeout(persistTimer); persistTimer = setTimeout(() => chrome.storage.local.set({ jf_dork_state: getConfig() }), 300); }
+async function getPresets() { return hasStorage ? ((await chrome.storage.local.get("jf_dork_presets")).jf_dork_presets || []) : []; }
+async function loadPresetDropdown() {
+  const arr = await getPresets(); const sel = $("presetSel");
+  sel.innerHTML = '<option value="">— Saved presets —</option>';
+  arr.forEach(p => { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name; sel.appendChild(o); });
+}
+$("presetSel").addEventListener("change", async e => { const id = e.target.value; if (!id) return; const p = (await getPresets()).find(x => x.id === id); if (p) { applyConfig(p.config); persist(); } });
+$("savePreset").addEventListener("click", async () => {
+  const name = prompt("Preset name:", $("roles").value.split(",")[0] || "Preset"); if (name == null) return;
+  const arr = await getPresets(); arr.push({ id: "d" + Date.now().toString(36), name: name.trim() || "Preset", config: getConfig() });
+  await chrome.storage.local.set({ jf_dork_presets: arr }); await loadPresetDropdown(); $("presetSel").value = arr[arr.length - 1].id;
+});
+$("delPreset").addEventListener("click", async () => {
+  const id = $("presetSel").value; if (!id) return;
+  const arr = (await getPresets()).filter(x => x.id !== id);
+  await chrome.storage.local.set({ jf_dork_presets: arr }); await loadPresetDropdown();
+});
+
+(async function initDork() {
+  if (hasStorage) { await loadPresetDropdown(); const st = (await chrome.storage.local.get("jf_dork_state")).jf_dork_state; applyConfig(st); }
+  else build();
+})();

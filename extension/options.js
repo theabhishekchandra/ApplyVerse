@@ -89,7 +89,8 @@ function profileCard(p) {
   grid.append(
     field("Role", p.role, "android developer", v => { p.role = v; commitProfiles(); }, "full"),
     field("Keywords (any match)", p.keywords, "android, kotlin, flutter", v => { p.keywords = v; commitProfiles(); }),
-    field("Exclude", p.exclude, "senior, sales", v => { p.exclude = v; commitProfiles(); })
+    field("Exclude", p.exclude, "senior, sales", v => { p.exclude = v; commitProfiles(); }),
+    field("Location (blank = anywhere)", p.location, "Bengaluru, India", v => { p.location = v; commitProfiles(); }, "full")
   );
   card.append(top, grid);
   return card;
@@ -104,7 +105,7 @@ function field(label, val, ph, oninput, cls) {
 let commitTimer = null;
 function commitProfiles() { clearTimeout(commitTimer); commitTimer = setTimeout(() => jfSetProfiles(profiles), 250); }
 $("addProfile").addEventListener("click", async () => {
-  const p = { id: jfId(), name: "New profile", role: "android developer", keywords: "android, kotlin, jetpack, flutter", exclude: "" };
+  const p = { id: jfId(), name: "New profile", role: "android developer", keywords: "android, kotlin, jetpack, flutter", exclude: "", location: "" };
   profiles.push(p);
   if (!activeId) { activeId = p.id; await jfSetActive(p.id); }
   await jfSetProfiles(profiles);

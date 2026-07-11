@@ -28,7 +28,15 @@
     "https://apply.workable.com/*",
     "https://*.recruitee.com/*",
     "https://*.jobs.personio.com/*",
-    "https://www.google.com/*"
+    "https://www.google.com/*",
+    "https://*.myworkdayjobs.com/*",
+    "https://*.icims.com/*",
+    "https://*.taleo.net/*",
+    "https://*.oraclecloud.com/*",
+    "https://*.avature.net/*",
+    "https://*.dayforcehcm.com/*",
+    "https://*.jobvite.com/*",
+    "https://*.teamtailor.com/*"
   ],
   "background": { "service_worker": "background.js" },
   "options_page": "options.html",

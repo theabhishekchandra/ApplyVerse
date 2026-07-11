@@ -395,13 +395,14 @@ $("onlyNew").addEventListener("change", render);
 async function sweepAts(id, shared) {
   const platform = provState[id].platform;
   const m = atsMatchers(shared.role, shared.keywords, shared.exclude);
+  const locRx = atsLocRx(shared.loc);
   const discovered = (await jfGetDiscovered())[platform] || [];
   const tokens = [...new Set([...(ATS_SEED[platform] || []), ...discovered])];
   setLight(id, "run", "sweeping…");
   statusEl.textContent = `[${nameOf(id)}] sweeping ${tokens.length} company APIs…`;
   const r = await atsSweep(platform, {
     tokens,
-    matchRx: m.matchRx, exRx: m.exRx,
+    matchRx: m.matchRx, exRx: m.exRx, locRx,
     onJob: j => upsert(j, id),
     onProgress: (done, total, found) => {
       setLight(id, "run", `${done}/${total} · ${found}`);
@@ -524,7 +525,7 @@ async function loadProfilesDropdown() {
 $("profileSel").addEventListener("change", async e => {
   const id = e.target.value; if (!id) return;
   const p = (await jfGetProfiles()).find(x => x.id === id); if (!p) return;
-  $("role").value = p.role || ""; $("keywords").value = p.keywords || ""; $("exclude").value = p.exclude || "";
+  $("role").value = p.role || ""; $("keywords").value = p.keywords || ""; $("exclude").value = p.exclude || ""; $("loc").value = p.location || "";
   await jfSetActive(id);
   statusEl.textContent = `Loaded profile “${p.name}”.`;
 });
@@ -534,7 +535,7 @@ $("saveProfile").addEventListener("click", async () => {
   const name = prompt("Profile name:", role);
   if (name == null) return;
   const profiles = await jfGetProfiles();
-  const p = { id: jfId(), name: name.trim() || role, role, keywords: $("keywords").value.trim(), exclude: $("exclude").value.trim() };
+  const p = { id: jfId(), name: name.trim() || role, role, keywords: $("keywords").value.trim(), exclude: $("exclude").value.trim(), location: $("loc").value.trim() };
   profiles.push(p);
   await jfSetProfiles(profiles);
   await jfSetActive(p.id);
@@ -549,7 +550,7 @@ async function loadWatched() {
   const profiles = await jfGetProfiles();
   const activeId = await jfGetActive();
   const prof = profiles.find(p => p.id === activeId) || profiles[0];
-  if (prof) { $("role").value = prof.role || ""; $("keywords").value = prof.keywords || ""; $("exclude").value = prof.exclude || ""; }
+  if (prof) { $("role").value = prof.role || ""; $("keywords").value = prof.keywords || ""; $("exclude").value = prof.exclude || ""; $("loc").value = prof.location || ""; }
   const list = await jfGet(JF_KEYS.bgResults, []);
   const dayAgo = Date.now() - 86400000;
   merged = new Map(); activeSources = null;
