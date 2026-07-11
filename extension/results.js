@@ -243,9 +243,9 @@ function render() {
   emptyEl.style.display = showEmpty ? "block" : "none";
   if (showEmpty) {
     emptyEl.innerHTML = merged.size
-      ? '<div class="empty-mark">∅</div><p>No results match the current filters.</p>'
+      ? '<img class="empty-img" src="icons/empty_state.png" alt="No matches"><p>No results match the current filters.</p>'
       : hasRun
-        ? '<div class="empty-mark">∅</div><p>No results. Try a broader role/keywords, check provider logins,<br>or run a provider individually from the popup.</p>'
+        ? '<img class="empty-img" src="icons/empty_state.png" alt="No results"><p>No results. Try a broader role/keywords, check provider logins,<br>or run a provider individually from the popup.</p>'
         : EMPTY_DEFAULT;
   }
   countEl.textContent = merged.size ? "· " + merged.size : "";
