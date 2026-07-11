@@ -798,3 +798,27 @@ var SITE_ORDER = [
   "ziprecruiter", "linkedin", "naukri", "wellfound", "cutshort", "instahyre",
   "workatastartup", "smartrecruiters", "shine", "indeed", "glassdoor", "foundit"
 ];
+
+// ---- Aggregation metadata (used by the "Search all" results page) ----
+// For each site: how to build its search URL from shared {role, loc}, whether it
+// needs login (so we can detect + prompt), its login page, and the cookie domain
+// used for the lightweight logged-in pre-check. `noAgg` = can't join a role-based
+// multi-search (SmartRecruiters is per-company → popup only).
+function _slug(s) { return (s || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+var AGG = {
+  ziprecruiter:   { needsLogin: false, url: s => `https://www.ziprecruiter.com/jobs-search?search=${encodeURIComponent(s.role)}&location=${encodeURIComponent(s.loc || "")}` },
+  linkedin:       { needsLogin: false, url: s => `https://www.linkedin.com/jobs/search?keywords=${encodeURIComponent(s.role)}&location=${encodeURIComponent(s.loc || "India")}` },
+  naukri:         { needsLogin: true,  domain: "naukri.com",         loginUrl: "https://www.naukri.com/nlogin/login", url: s => `https://www.naukri.com/${_slug(s.role) || "jobs"}-jobs-in-india` },
+  wellfound:      { needsLogin: true,  domain: "wellfound.com",      loginUrl: "https://wellfound.com/login",        url: s => `https://wellfound.com/role/r/${_slug(s.role)}` },
+  cutshort:       { needsLogin: false, url: s => `https://cutshort.io/jobs/${_slug(s.role) || "jobs"}-jobs` },
+  instahyre:      { needsLogin: true,  domain: "instahyre.com",      loginUrl: "https://www.instahyre.com/login/",    url: s => `https://www.instahyre.com/search-jobs/` },
+  workatastartup: { needsLogin: true,  domain: "workatastartup.com", loginUrl: "https://www.workatastartup.com/",     url: s => `https://www.workatastartup.com/jobs` },
+  smartrecruiters:{ noAgg: true },
+  shine:          { needsLogin: false, url: s => `https://www.shine.com/job-search/${_slug(s.role) || "jobs"}-jobs` },
+  indeed:         { needsLogin: false, url: s => `https://in.indeed.com/jobs?q=${encodeURIComponent(s.role)}&l=${encodeURIComponent(s.loc || "")}` },
+  glassdoor:      { needsLogin: false, url: s => `https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword=${encodeURIComponent(s.role)}` },
+  foundit:        { needsLogin: false, url: s => `https://www.foundit.in/` }
+};
+
+// Caps so a multi-provider run stays fast (per-provider depth).
+var AGG_CAP = { maxPages: 3, maxJobs: 60, maxScrolls: 10, maxClicks: 5 };

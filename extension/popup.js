@@ -225,6 +225,10 @@ function downloadCsv() {
 }
 
 // ---------- wire up ----------
+$("openAll").addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("results.html") });
+  window.close();
+});
 siteSel.addEventListener("change", () => renderForm(siteSel.value));
 startBtn.addEventListener("click", start);
 csvBtn.addEventListener("click", downloadCsv);

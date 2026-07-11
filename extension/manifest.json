@@ -3,7 +3,7 @@
   "name": "Job Finder",
   "version": "1.0.0",
   "description": "Search developer jobs across 12 boards from one popup — filter by keywords, see only-new-since-last-run, export CSV.",
-  "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads"],
+  "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads", "cookies"],
   "host_permissions": [
     "https://*.ziprecruiter.com/*",
     "https://*.linkedin.com/*",

@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Job Finder — Search all</title>
+  <link rel="stylesheet" href="results.css">
+</head>
+<body>
+  <header>
+    <span class="brand">🔎 Job Finder — Search all providers</span>
+    <span id="count" class="count"></span>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="fields">
+        <div class="fld"><label>Role / profile</label><input id="role" type="text" placeholder="android developer"></div>
+        <div class="fld"><label>Location</label><input id="loc" type="text" placeholder="India"></div>
+        <div class="fld"><label>Keywords (ANY match; blank = all)</label><input id="keywords" type="text" placeholder="android, kotlin, flutter"></div>
+        <div class="fld"><label>Exclude words</label><input id="exclude" type="text" placeholder="senior, sales"></div>
+      </div>
+
+      <div class="providers-head">
+        <label class="chk"><input type="checkbox" id="selAll"> <b>Select all providers</b></label>
+        <label class="chk"><input type="checkbox" id="onlyNew"> Only new since last run</label>
+        <button id="recheck" class="ghost small">↻ Re-check logins</button>
+      </div>
+      <div id="providers" class="providers"></div>
+
+      <div class="actions">
+        <button id="search" class="primary">▶ Search selected providers</button>
+        <button id="csv" class="ghost" disabled>⬇ Download CSV</button>
+        <span id="status" class="status"></span>
+      </div>
+    </section>
+
+    <section class="results">
+      <table id="tbl">
+        <thead>
+          <tr><th></th><th>Title</th><th>Company</th><th>Location</th><th>Pay / Exp</th><th>Source(s)</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="empty" class="empty">No results yet — pick providers and hit Search.</div>
+    </section>
+  </main>
+
+  <script src="sites.js"></script>
+  <script src="results.js"></script>
+</body>
+</html>

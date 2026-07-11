@@ -16,7 +16,33 @@ new since last run** across every site.
 It's a private/local extension — not on the Chrome Web Store — so "Load
 unpacked" is the way to run it.
 
-## Use
+## Search ALL providers (aggregator)
+
+Click **🔎 Search ALL providers →** at the top of the popup to open the
+**results page**. There you can:
+
+1. **Pick providers** — check any subset, or **Select all**. (SmartRecruiters is
+   per-company, so it's popup-only and excluded here.)
+2. **See login status** — each login-gated provider (Naukri, Instahyre,
+   Wellfound, YC) shows **logged in / logged out**; logged-out ones get a **Log
+   in** button that opens that site. Use **↻ Re-check logins** after signing in.
+3. **One-click search** — set Role / Location / Keywords / Exclude once and hit
+   **▶ Search selected providers**. For each one the page opens a **background
+   tab at that provider's search URL** (auto-navigate — you don't have to be on
+   the page), injects the scraper, collects results, and closes the tab.
+4. **Unified results** — everything lands in **one table**, **de-duplicated
+   across providers** (a job posted to several boards collapses to one row with
+   all its **Sources**), with **NEW** badges for jobs unseen since your last run,
+   clickable title links, and **⬇ Download CSV**.
+
+Providers that need login are skipped (with a prompt) until you're signed in.
+Bot-walled sites (Indeed, Glassdoor) may return little/nothing — that's expected,
+and they never bypass a CAPTCHA.
+
+> After editing extension files, **reload the extension** at
+> `chrome://extensions` (↻ on the card) for changes to take effect.
+
+## Use (single site)
 
 1. Open the job site and run its normal search (set role/location/filters
    there — the same starting pages the console scripts used).
