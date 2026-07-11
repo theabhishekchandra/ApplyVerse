@@ -38,5 +38,9 @@ jobs:
           done
           exit $fail
 
+      - name: Unit tests (pure helpers — no deps)
+        working-directory: extension
+        run: node --test
+
       - name: Build the shareable zip (smoke test)
         run: bash extension/scripts/pack.sh

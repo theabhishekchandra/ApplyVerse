@@ -7,8 +7,8 @@ const providersEl = $("providers"), rowsEl = $("rows"), statusEl = $("status"),
   showingEl = $("showing"), srcChipsEl = $("srcChips");
 const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const norm = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-const jobKey = j => norm(j.title) + "|" + norm(j.company);
+// norm(), jobKey() and fitScore() live in rank.js (pure, unit-tested), loaded
+// before this script so their bindings are in scope here.
 const escHtml = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 // provider display name — works for both DOM-scrape sites and ATS sweep pseudo-providers
 const nameOf = id => (provState[id] && provState[id].name) || (SITES[id] ? SITES[id].name : id);
@@ -114,14 +114,7 @@ function matchTerms() {
   if (!terms.length) terms = ($("role").value || "").toLowerCase().split(/\s+/).filter(s => s.length > 2);
   return terms;
 }
-function fitScore(job, terms) {
-  if (!terms.length) return 0;
-  const title = (job.title || "").toLowerCase();
-  const body = ((job.jd || "") + " " + (job.department || "") + " " + (job.company || "")).toLowerCase();
-  let s = 0, max = 0;
-  for (const t of terms) { max += 3; if (title.includes(t)) s += 3; else if (body.includes(t)) s += 1; }
-  return max ? Math.round(100 * s / max) : 0;
-}
+// fitScore(job, terms) is defined in rank.js (loaded before this script).
 
 // ---------- provider health / drift detection (Tier 3) ----------
 let health = {};

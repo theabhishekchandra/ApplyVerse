@@ -5,6 +5,12 @@ Thanks for your interest in improving ApplyVerse! It's a Chrome extension
 platforms. Contributions of all sizes are welcome — bug fixes, new job-board
 scrapers, new ATS providers, UI polish, and docs.
 
+> **New here?** Adding a source is the highest-value contribution and takes ~10
+> minutes — follow **[docs/ADD-A-PROVIDER.md](docs/ADD-A-PROVIDER.md)**. For where
+> help is most wanted, see the **[ROADMAP](ROADMAP.md)** and the
+> [`good first issue`](https://github.com/theabhishekchandra/ApplyVerse/labels/good%20first%20issue)
+> label.
+
 ## Ground rules (please read first)
 
 ApplyVerse is built to be a **polite, account-safe** tool. Any contribution must
@@ -46,8 +52,11 @@ extension/
   background.js     # service worker — scheduled ATS sweep, notifications, badge
   sites.js          # registry of job-board scrapers (one entry per site)
   ats.js            # company-ATS module (Greenhouse/Lever/Ashby/Personio/…)
+  rank.js           # pure ranking/de-dup helpers (norm, jobKey, fitScore) — unit-tested
   store.js          # chrome.storage helpers + key names
-docs/               # deeper notes (ATS/dorks, techniques)
+  tour.js/.css      # first-run guided tour of the results page
+  tests/            # node --test unit tests for the pure helpers (no deps)
+docs/               # deeper notes (add-a-provider, ATS/dorks, techniques)
 finders/            # the original standalone console scripts (reference)
 ```
 
@@ -59,13 +68,16 @@ finders/            # the original standalone console scripts (reference)
   breaks Web Store review). Inline everything.
 - Storage keys live in `store.js` (`JF_KEYS`). Don't rename existing keys —
   that orphans users' saved data.
-- Adding a **job board**? Add one entry to `sites.js` with its form fields and a
-  `scrape(cfg)` function. Adding an **ATS provider**? Extend `ATS_PLATFORMS` /
-  `ATS_SEED` in `ats.js`. See `docs/ATS-AND-DORKS.md`.
+- Adding a **job board** or **ATS provider**? Follow the copy-paste recipe in
+  **[`docs/ADD-A-PROVIDER.md`](docs/ADD-A-PROVIDER.md)** (endpoint/token details
+  are in `docs/ATS-AND-DORKS.md`).
+- Touching the pure logic (`rank.js`, `ats.js`, `store.js`)? Add/adjust a test in
+  `extension/tests/` — they run under Node with **no dependencies**.
 
 ## Before you open a PR
 
 - [ ] `node --check` passes on every `.js` file you touched (CI runs this too).
+- [ ] `cd extension && node --test` passes (unit tests for the pure helpers).
 - [ ] `manifest.json` is still valid JSON and, if you added a permission, it's
       **justified** in the PR description (keep the permission set minimal).
 - [ ] You manually loaded the unpacked extension and exercised the change.

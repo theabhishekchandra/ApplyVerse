@@ -1,0 +1,89 @@
+/* ApplyVerse — in-app guided tour (self-contained, no dependencies).
+   Uses the shared design tokens from results.css (:root vars are page-global). */
+
+.av-tour-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  pointer-events: auto;            /* swallow clicks on the app while the tour runs */
+  background: transparent;
+  transition: background .2s ease;
+}
+/* centered steps (welcome / done) dim the whole screen */
+.av-tour-overlay.dim { background: rgba(6, 8, 15, .72); }
+
+/* the spotlight "hole": its huge box-shadow dims everything except the target */
+.av-tour-spot {
+  position: fixed; left: 0; top: 0; width: 0; height: 0;
+  border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(6, 8, 15, .72);
+  outline: 2px solid rgba(124, 92, 255, .9);
+  outline-offset: 3px;
+  transition: left .28s cubic-bezier(.22,.61,.36,1), top .28s cubic-bezier(.22,.61,.36,1),
+              width .28s cubic-bezier(.22,.61,.36,1), height .28s cubic-bezier(.22,.61,.36,1);
+  animation: avSpotPulse 1.8s ease-in-out infinite;
+}
+.av-tour-spot.hide { display: none; }
+@keyframes avSpotPulse {
+  0%, 100% { outline-color: rgba(124, 92, 255, .9); }
+  50%      { outline-color: rgba(52, 226, 208, .95); }
+}
+
+/* the popover card */
+.av-tour-pop {
+  position: fixed; z-index: 9001; width: 300px; max-width: calc(100vw - 24px);
+  background: linear-gradient(180deg, #121a2e, #0d1322);
+  border: 1px solid rgba(124, 92, 255, .4); border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255,255,255,.03) inset;
+  padding: 16px 16px 14px; color: var(--ink);
+  opacity: 0; transform: translateY(6px) scale(.98);
+  transition: opacity .18s ease, transform .18s ease, left .28s cubic-bezier(.22,.61,.36,1), top .28s cubic-bezier(.22,.61,.36,1);
+}
+.av-tour-pop.in { opacity: 1; transform: none; }
+.av-tour-pop.center { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 340px; }
+.av-tour-pop.center.in { transform: translate(-50%, -50%); }
+
+.av-tour-eyebrow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.av-tour-step { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.av-tour-x {
+  background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12px;
+  padding: 2px 6px; border-radius: 8px; font-weight: 700;
+}
+.av-tour-x:hover { color: var(--ink); background: rgba(255,255,255,.06); }
+
+.av-tour-title { font-size: 16px; font-weight: 800; letter-spacing: -.2px; margin: 0 0 6px; }
+.av-tour-title .em { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.av-tour-body { font-size: 12.5px; line-height: 1.55; color: var(--ink-2); margin: 0; }
+.av-tour-body b { color: var(--ink); }
+.av-tour-body kbd {
+  font: inherit; font-size: 11px; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 1px 6px; color: var(--ink);
+}
+
+.av-tour-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+.av-tour-dots { display: flex; gap: 5px; }
+.av-tour-dots i {
+  width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.18);
+  transition: background .2s, transform .2s;
+}
+.av-tour-dots i.on { background: var(--accent-2); transform: scale(1.25); }
+.av-tour-btns { display: flex; gap: 8px; }
+.av-tour-btn {
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2);
+  font-size: 12px; font-weight: 700; padding: 7px 13px; border-radius: 9px; cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s, transform .1s;
+}
+.av-tour-btn:hover { color: var(--ink); border-color: rgba(124,92,255,.5); }
+.av-tour-btn:active { transform: translateY(1px); }
+.av-tour-btn.primary {
+  border-color: transparent; color: #fff; background: var(--grad-2);
+  box-shadow: 0 6px 18px rgba(124,92,255,.35);
+}
+.av-tour-btn.primary:hover { color: #fff; filter: brightness(1.06); }
+.av-tour-btn.ghost { background: none; }
+.av-tour-btn[hidden] { display: none; }
+
+/* the replay link in the sidebar footer */
+#tourLink { cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  .av-tour-spot, .av-tour-pop { transition: none; animation: none; }
+}

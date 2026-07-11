@@ -5,6 +5,7 @@
   <title>ApplyVerse — Search all</title>
   <link rel="icon" type="image/png" href="icons/icon48.png">
   <link rel="stylesheet" href="results.css">
+  <link rel="stylesheet" href="tour.css">
 </head>
 <body>
   <div class="app">
@@ -23,7 +24,7 @@
           <select id="profileSel" title="Load a saved profile"><option value="">— Saved profiles —</option></select>
           <button id="saveProfile" class="linkbtn" title="Save current fields as a profile">＋ Save</button>
         </div>
-        <div class="group">
+        <div class="group" id="searchFields">
           <div class="fld"><label>Role / profile</label><input id="role" type="text" placeholder="e.g. software engineer"></div>
           <div class="fld"><label>Location</label><input id="loc" type="text" placeholder="e.g. Remote, London"></div>
           <div class="fld"><label>Keywords <span class="hint">any match</span></label><input id="keywords" type="text" placeholder="e.g. python, react, aws"></div>
@@ -62,6 +63,7 @@
         <div id="status" class="status"></div>
         <a class="settings-link" id="collectedLink" href="results.html?watched=1" hidden>📥 Collected jobs</a>
         <a class="settings-link" id="settingsLink" href="options.html">⚙ Automation &amp; settings</a>
+        <a class="settings-link" id="tourLink" href="#" title="Replay the guided tour">🧭 Take the tour</a>
       </div>
     </aside>
 
@@ -120,6 +122,8 @@
   <script src="sites.js"></script>
   <script src="ats.js"></script>
   <script src="store.js"></script>
+  <script src="rank.js"></script>
   <script src="results.js"></script>
+  <script src="tour.js"></script>
 </body>
 </html>

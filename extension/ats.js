@@ -346,3 +346,14 @@ function atsMatchers(role, keywords, exclude) {
     exRx: ex.length ? new RegExp(ex.map(esc).join("|"), "i") : null
   };
 }
+
+// Export the pure helpers for Node unit tests. No-op in the browser / service
+// worker (neither defines `module`), so the runtime behaviour is unchanged.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    ATS_PLATFORMS, ATS_SEED, ATS_STOPWORDS,
+    _atsText, _atsSalary, _atsExp, _atsApplyEnrich, _atsEnrich,
+    _atsTitleCase, _atsIso, _atsRemote,
+    atsTokenFromUrl, atsMatchers, atsLocRx
+  };
+}

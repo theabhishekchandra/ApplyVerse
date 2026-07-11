@@ -1,10 +1,17 @@
 # Packaging & Chrome Web Store checklist
 
 ApplyVerse is a Manifest V3 extension with no build step — the source in
-`extension/` *is* what ships. To produce a store-ready zip:
+`extension/` *is* what ships. There are **two packagers** for two audiences:
+
+| Script | Output | Use for |
+|--------|--------|---------|
+| `./scripts/pack.sh` | `dist/applyverse-<version>-webstore.zip` (flat) | **Chrome Web Store** upload |
+| `bash extension/scripts/pack.sh` | `extension/dist/applyverse-<version>.zip` (wrapped in an `applyverse/` folder) | **friends / sideload** via "Load unpacked" — see [`extension/INSTALL.md`](../extension/INSTALL.md) |
+
+To produce a store-ready zip:
 
 ```bash
-./scripts/pack.sh        # → dist/applyverse-<version>.zip
+./scripts/pack.sh        # → dist/applyverse-<version>-webstore.zip
 ```
 
 Then upload the zip at the [Chrome Web Store Developer

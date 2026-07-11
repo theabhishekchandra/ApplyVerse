@@ -144,6 +144,8 @@ Contributions are welcome — bug fixes, new job boards, new ATS providers, UI p
 and docs. Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** (dev setup, project
 layout, conventions, and the account-safety rules).
 
+- ➕ Adding a source? The 10-minute recipe → **[docs/ADD-A-PROVIDER.md](docs/ADD-A-PROVIDER.md)**.
+- 🗺 Where help is wanted → **[ROADMAP.md](ROADMAP.md)** and the [`good first issue`](https://github.com/theabhishekchandra/ApplyVerse/labels/good%20first%20issue) label.
 - 🐛 Bug or 💡 feature → open an issue (templates provided).
 - 🔒 Security issue → **[SECURITY.md](SECURITY.md)** (report privately).
 - 🤝 Be kind → **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**.

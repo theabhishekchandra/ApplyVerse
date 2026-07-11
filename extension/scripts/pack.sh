@@ -21,8 +21,8 @@ VERSION="$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' manifest.json | h
 # Runtime files only. Add new source files here as the extension grows.
 FILES=(
   manifest.json
-  ats.js background.js dorks.js options.js popup.js results.js sites.js store.js
-  dorks.css options.css popup.css results.css
+  ats.js background.js dorks.js options.js popup.js rank.js results.js sites.js store.js tour.js
+  dorks.css options.css popup.css results.css tour.css
   dorks.html options.html popup.html results.html
   icons
 )

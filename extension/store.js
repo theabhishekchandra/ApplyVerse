@@ -12,7 +12,8 @@ var JF_KEYS = {
   lastRun: "jf_last_run",      // { at, total, new, ok, reason }
   track: "jf_track",           // { [jobKey]: "saved" | "applied" | "hidden" }
   discovered: "jf_discovered", // { [platform]: [token] } harvested from dork pages
-  health: "jf_health"          // { [providerId]: { lastCount, best, at } } drift detection
+  health: "jf_health",         // { [providerId]: { lastCount, best, at } } drift detection
+  tour: "jf_tour_done"         // true once the in-app guided tour has been seen
 };
 var JF_DEFAULT_SETTINGS = { autoEnabled: false, intervalMin: 180, notify: true, platforms: ["greenhouse", "lever", "ashby"] };
 
@@ -43,3 +44,9 @@ async function jfAddDiscovered(map) {
 
 function jfJobKey(j) { const n = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); return n(j.title) + "|" + n(j.company); }
 function jfId() { return "p" + Math.abs(Date.now() ^ Math.floor(performance.now() * 1000)).toString(36); }
+
+// Export the pure/schema bits for Node unit tests. No-op in the browser and the
+// service worker (importScripts) — neither defines `module`.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { JF_KEYS, JF_DEFAULT_SETTINGS, jfJobKey };
+}
