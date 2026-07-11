@@ -1,2 +1,44 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Build / cache output
+dist/
+build/
+coverage/
+.cache/
+*.tsbuildinfo
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+.history/
+
+# OS
 .DS_Store
+Thumbs.db
+Desktop.ini
+
+# Tool output (job-finder CSV exports)
 *.csv
