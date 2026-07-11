@@ -812,7 +812,7 @@ var AGG = {
   ziprecruiter:   { needsLogin: false, url: s => `https://www.ziprecruiter.com/jobs-search?search=${encodeURIComponent(s.role)}&location=${encodeURIComponent(s.loc || "")}` },
   linkedin:       { needsLogin: false, url: s => `https://www.linkedin.com/jobs/search?keywords=${encodeURIComponent(s.role)}&location=${encodeURIComponent(s.loc || "India")}` },
   naukri:         { needsLogin: false, dom: true, domain: "naukri.com",         loginUrl: "https://www.naukri.com/nlogin/login", url: s => `https://www.naukri.com/${_slug(s.role) || "jobs"}-jobs-in-india` },
-  wellfound:      { needsLogin: false, dom: true, domain: "wellfound.com",      loginUrl: "https://wellfound.com/login",        url: s => `https://wellfound.com/role/r/${_slug(s.role)}` },
+  wellfound:      { needsLogin: false, dom: true, domain: "wellfound.com",      loginUrl: "https://wellfound.com/login",        url: s => `https://wellfound.com/jobs` },
   cutshort:       { needsLogin: false, dom: true, url: s => `https://cutshort.io/jobs/${_slug(s.role) || "jobs"}-jobs` },
   instahyre:      { needsLogin: true,  domain: "instahyre.com",      loginUrl: "https://www.instahyre.com/login/",    url: s => `https://www.instahyre.com/search-jobs/` },
   workatastartup: { needsLogin: true,  dom: true, domain: "workatastartup.com", loginUrl: "https://www.workatastartup.com/",     url: s => `https://www.workatastartup.com/jobs` },
