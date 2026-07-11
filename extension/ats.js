@@ -151,6 +151,34 @@ var ATS_PLATFORMS = {
       };
     })
   },
+  personio: {
+    name: "Personio",
+    site: "jobs.personio.com",
+    format: "xml",   // Personio publishes an XML feed, not JSON — parse text with regex (works in the SW too)
+    list: token => `https://${encodeURIComponent(token)}.jobs.personio.com/xml?language=en`,
+    parse: (xml, token) => {
+      const jobs = [];
+      const positions = String(xml).match(/<position>[\s\S]*?<\/position>/g) || [];
+      const g = (blk, tag) => { const m = blk.match(new RegExp("<" + tag + ">([\\s\\S]*?)</" + tag + ">")); return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim() : ""; };
+      for (const p of positions) {
+        const id = g(p, "id"); const name = g(p, "name"); if (!id || !name) continue;
+        const office = _atsText(g(p, "office") || g(p, "additionalOffices"));
+        const yrs = g(p, "yearsOfExperience").replace(/<[^>]+>/g, "").trim();
+        const desc = _atsText(g(p, "jobDescriptions"));
+        jobs.push(_atsEnrich({
+          title: _atsText(name),
+          company: _atsTitleCase(token),
+          location: _atsRemote(office, /remote/i.test(g(p, "schedule") + office)),
+          salary: "",
+          exp: /\d/.test(yrs) ? (/(yr|year)/i.test(yrs) ? yrs : yrs + " yrs") : "",
+          posted: _atsIso(g(p, "createdAt")),
+          url: `https://${token}.jobs.personio.com/job/${id}`,
+          department: _atsText(g(p, "department"))
+        }, desc));
+      }
+      return jobs;
+    }
+  },
   recruitee: {
     name: "Recruitee",
     site: "recruitee.com",
@@ -191,8 +219,26 @@ var ATS_SEED = {
     "bjakcareer", "patreon", "substack", "aspora"
   ],
   workable: [],
-  recruitee: []
+  recruitee: [],
+  personio: ["personio"]
 };
+
+/* Map a job-board result URL to its ATS platform + company token — used by the
+   Google-dork "harvest tokens" feature to grow ATS_SEED from search results. */
+function atsTokenFromUrl(u) {
+  try {
+    const url = new URL(u), h = url.hostname.toLowerCase();
+    const seg = url.pathname.split("/").filter(Boolean);
+    const clean = t => (t || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    if (/(^|\.)greenhouse\.io$/.test(h) && seg[0] && !["embed", "jobs"].includes(seg[0])) return { platform: "greenhouse", token: clean(seg[0]) };
+    if (h === "jobs.lever.co" && seg[0]) return { platform: "lever", token: clean(seg[0]) };
+    if (h === "jobs.ashbyhq.com" && seg[0]) return { platform: "ashby", token: clean(seg[0]) };
+    if (h === "apply.workable.com" && seg[0]) return { platform: "workable", token: clean(seg[0]) };
+    let m = h.match(/^([a-z0-9-]+)\.recruitee\.com$/); if (m) return { platform: "recruitee", token: m[1] };
+    m = h.match(/^([a-z0-9-]+)\.jobs\.personio\.com$/); if (m) return { platform: "personio", token: m[1] };
+    return null;
+  } catch (e) { return null; }
+}
 
 /* Fetch one company's postings, normalized + optionally keyword/exclude filtered.
    Returns { ok, status, jobs }. */
@@ -202,9 +248,10 @@ async function atsFetchCompany(platform, token, opts) {
   if (!def) return { ok: false, status: 0, jobs: [] };
   let data;
   try {
-    const r = await fetch(def.list(token), { headers: { Accept: "application/json" }, signal: opts.signal });
+    const isXml = def.format === "xml";
+    const r = await fetch(def.list(token), { headers: { Accept: isXml ? "application/xml" : "application/json" }, signal: opts.signal });
     if (r.status !== 200) return { ok: false, status: r.status, jobs: [] };
-    data = await r.json();
+    data = isXml ? await r.text() : await r.json();
   } catch (e) { return { ok: false, status: -1, jobs: [] }; }
   let jobs = def.parse(data, token).filter(j => j.title && j.url);
   if (opts.matchRx || opts.exRx) {

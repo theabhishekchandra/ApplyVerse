@@ -10,7 +10,9 @@ var JF_KEYS = {
   bgResults: "jf_bg_results",  // [normalized job + firstSeen] last watch results
   newCount: "jf_new_count",    // badge number (new since last opened)
   lastRun: "jf_last_run",      // { at, total, new, ok, reason }
-  track: "jf_track"            // { [jobKey]: "saved" | "applied" | "hidden" }
+  track: "jf_track",           // { [jobKey]: "saved" | "applied" | "hidden" }
+  discovered: "jf_discovered", // { [platform]: [token] } harvested from dork pages
+  health: "jf_health"          // { [providerId]: { lastCount, best, at } } drift detection
 };
 var JF_DEFAULT_SETTINGS = { autoEnabled: false, intervalMin: 180, notify: true, platforms: ["greenhouse", "lever", "ashby"] };
 
@@ -24,6 +26,20 @@ async function jfSetProfiles(p) { await chrome.storage.local.set({ [JF_KEYS.prof
 async function jfGetActive() { const o = await chrome.storage.local.get(JF_KEYS.active); return o[JF_KEYS.active] || null; }
 async function jfSetActive(id) { await chrome.storage.local.set({ [JF_KEYS.active]: id }); }
 async function jfGet(key, def) { const o = await chrome.storage.local.get(key); return o[key] === undefined ? def : o[key]; }
+
+async function jfGetDiscovered() { const o = await chrome.storage.local.get(JF_KEYS.discovered); return o[JF_KEYS.discovered] || {}; }
+async function jfAddDiscovered(map) {
+  const cur = await jfGetDiscovered();
+  const added = {};
+  for (const k of Object.keys(map)) {
+    const set = new Set(cur[k] || []);
+    let n = 0;
+    for (const tok of map[k]) if (tok && !set.has(tok)) { set.add(tok); n++; }
+    cur[k] = [...set]; if (n) added[k] = n;
+  }
+  await chrome.storage.local.set({ [JF_KEYS.discovered]: cur });
+  return added;
+}
 
 function jfJobKey(j) { const n = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); return n(j.title) + "|" + n(j.company); }
 function jfId() { return "p" + Math.abs(Date.now() ^ Math.floor(performance.now() * 1000)).toString(36); }

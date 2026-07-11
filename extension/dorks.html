@@ -70,8 +70,12 @@
     <div class="out">
       <div class="out-head">
         <h2>Run these searches <span class="dim" id="batchCount"></span></h2>
-        <button class="primary" id="openAll">🔎 Open all in Google</button>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="ghost" id="harvest" title="Scan open Google result tabs for company ATS links and add their tokens to the sweep">🌾 Harvest tokens</button>
+          <button class="primary" id="openAll">🔎 Open all in Google</button>
+        </div>
       </div>
+      <div id="harvestMsg" class="harvest-msg" hidden></div>
       <div id="queries" class="queries"></div>
 
       <h2 style="margin-top:26px">Companies with no ATS subdomain <span class="dim">(inurl / intitle + aggregator exclusion)</span></h2>
@@ -84,6 +88,8 @@
       <code>boards.greenhouse.io/<b>acme</b></code>, <code>careers-<b>acme</b>.icims.com</code>.</p>
   </div>
 
+  <script src="store.js"></script>
+  <script src="ats.js"></script>
   <script src="dorks.js"></script>
 </body>
 </html>

@@ -84,6 +84,18 @@ function fitScore(job, terms) {
   return max ? Math.round(100 * s / max) : 0;
 }
 
+// ---------- provider health / drift detection (Tier 3) ----------
+let health = {};
+async function loadHealth() { health = (await jfGet(JF_KEYS.health, {})) || {}; }
+async function recordHealth(id, count) {
+  const h = health[id] || { best: 0, lastCount: 0 };
+  const drift = h.best > 2 && count === 0;   // used to reliably yield, now zero → likely selector drift
+  h.lastCount = count; h.best = Math.max(h.best || 0, count); h.at = Date.now();
+  health[id] = h;
+  await chrome.storage.local.set({ [JF_KEYS.health]: health });
+  return drift;
+}
+
 // ---------- apply tracking (Tier 2) ----------
 async function loadTrack() { track = (await jfGet(JF_KEYS.track, {})) || {}; }
 async function setTrackStatus(key, val) {
@@ -383,9 +395,12 @@ $("onlyNew").addEventListener("change", render);
 async function sweepAts(id, shared) {
   const platform = provState[id].platform;
   const m = atsMatchers(shared.role, shared.keywords, shared.exclude);
+  const discovered = (await jfGetDiscovered())[platform] || [];
+  const tokens = [...new Set([...(ATS_SEED[platform] || []), ...discovered])];
   setLight(id, "run", "sweeping…");
-  statusEl.textContent = `[${nameOf(id)}] sweeping company APIs…`;
+  statusEl.textContent = `[${nameOf(id)}] sweeping ${tokens.length} company APIs…`;
   const r = await atsSweep(platform, {
+    tokens,
     matchRx: m.matchRx, exRx: m.exRx,
     onJob: j => upsert(j, id),
     onProgress: (done, total, found) => {
@@ -428,7 +443,10 @@ async function searchAll() {
       }
       const res = await exec(tab.id, SITES[id].scrape, buildCfg(id, shared));
       (res || []).forEach(j => upsert(j, id));
-      setLight(id, "done", `${(res || []).length} found`);
+      const count = (res || []).length;
+      const drift = await recordHealth(id, count);
+      setLight(id, drift ? "out" : "done", drift ? "0 — drift?" : `${count} found`);
+      if (drift) statusEl.textContent = `[${SITES[id].name}] ⚠ returned 0 but usually finds jobs — the site layout may have changed (scraper drift).`;
     } catch (e) {
       setLight(id, "out", "error");
       statusEl.textContent = `[${SITES[id].name}] error: ${e && e.message ? e.message : e}`;
@@ -515,6 +533,7 @@ async function loadWatched() {
 (async function init() {
   chrome.runtime.sendMessage({ type: "jf_clear_badge" }).catch(() => {});
   await loadTrack();
+  await loadHealth();
   await loadProfilesDropdown();
   const watched = new URLSearchParams(location.search).get("watched");
   if (watched) { await loadWatched(); return; }

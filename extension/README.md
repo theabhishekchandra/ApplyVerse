@@ -46,13 +46,27 @@ roles that never reach the aggregators. Tokens are verified to return live jobs;
 extend the seed lists in `ats.js` (the token is the path in a company's careers
 URL) — the Dork builder helps you discover more.
 
-### ⚡ Google-dork builder
+The sweep covers **Greenhouse / Lever / Ashby / Personio** (Personio via its
+public XML feed). Recruitee/Workable are per-company (popup) since their
+subdomains can't be seed-guessed.
 
-The **⚡ Dork builder** link (top of the ATS group) opens a page that builds a
-Google search string targeting company ATS platforms (`site:boards.greenhouse.io`
-etc.), with role synonyms, skills, locations, seniority, and aggregator
-exclusion. Hit **Open in Google**, then read each result's company token from its
-URL and add it to the sweep. It only opens a Google URL — no scraping.
+### ⚡ Google-dork builder + token harvest
+
+The **⚡ Dork builder** link (top of the ATS group) opens a page that builds
+Google searches targeting company ATS platforms (`site:boards.greenhouse.io`
+etc.) — role synonyms, skills, locations, seniority, aggregator exclusion,
+auto-split into Google-friendly batches. Hit **Open all in Google**, let the
+results load, then click **🌾 Harvest tokens**: it scans your open Google result
+tabs, extracts every company ATS link, and **adds their tokens to the sweep**
+automatically (deduped). The next sweep includes them. It only reads open Google
+tabs and opens Google URLs — no scraping of the job sites themselves.
+
+### Scraper health / drift detection
+
+The DOM-scrape boards can break when a site changes its layout (ZipRecruiter did
+once). Job Finder records each board's typical yield; if a provider that reliably
+returned jobs suddenly returns **0**, its row shows **“0 — drift?”** and a
+warning, so you know it's the scraper — not an empty search.
 
 ### Filtering & sorting the results
 

@@ -201,4 +201,33 @@ $("openAll").addEventListener("click", () => {
   qs.forEach((x, i) => openUrl(googleUrl(x.q), i === 0));
 });
 
+// ---------- harvest company tokens from open Google result tabs ----------
+$("harvest").addEventListener("click", async () => {
+  const msg = $("harvestMsg"); msg.hidden = false; msg.textContent = "Scanning open Google tabs…";
+  if (!(typeof chrome !== "undefined" && chrome.tabs && chrome.scripting)) { msg.textContent = "Harvest needs the extension context."; return; }
+  const tabs = await chrome.tabs.query({ url: ["*://www.google.com/search*", "*://www.google.co.in/search*"] });
+  if (!tabs.length) { msg.textContent = "No open Google search tabs. Click “Open all in Google” first, let results load, then harvest."; return; }
+  const hrefs = [];
+  for (const t of tabs) {
+    try {
+      const [r] = await chrome.scripting.executeScript({
+        target: { tabId: t.id },
+        func: () => Array.from(document.querySelectorAll("a[href]")).map(a => a.href)
+      });
+      if (r && r.result) hrefs.push(...r.result);
+    } catch (e) { /* skip tabs we can't script */ }
+  }
+  // Google organic links can be direct or /url?q= redirects — normalize both.
+  const urls = hrefs.map(h => { const m = h.match(/[?&]q=(https?[^&]+)/); return m ? decodeURIComponent(m[1]) : h; });
+  const found = {};
+  for (const u of urls) { const t = atsTokenFromUrl(u); if (t) (found[t.platform] = found[t.platform] || new Set()).add(t.token); }
+  const map = {}; let total = 0;
+  for (const k of Object.keys(found)) { map[k] = [...found[k]]; total += map[k].length; }
+  if (!total) { msg.textContent = `Scanned ${tabs.length} tab(s), found no ATS company links. Make sure the results are ATS-targeted (Greenhouse/Lever/Ashby/Workable/Recruitee/Personio).`; return; }
+  const added = await jfAddDiscovered(map);
+  const addedTotal = Object.values(added).reduce((a, b) => a + b, 0);
+  const parts = Object.keys(map).map(k => `${k} ${map[k].length}`).join(", ");
+  msg.innerHTML = `Found <b>${total}</b> tokens (${parts}). Added <b>${addedTotal}</b> new to the sweep. <a href="results.html?watched=0">Run the sweep →</a>`;
+});
+
 build();
