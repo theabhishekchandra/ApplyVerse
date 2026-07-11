@@ -1,6 +1,8 @@
 /* Job Finder — results, advanced dashboard UI */
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+/* the [hidden] attribute must win over any display rule below (e.g. flex menus) */
+[hidden] { display: none !important; }
 :root {
   --bg: #06080f;
   --rail: #0b0f1c;

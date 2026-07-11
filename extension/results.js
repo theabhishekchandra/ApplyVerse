@@ -544,6 +544,12 @@ $("saveProfile").addEventListener("click", async () => {
 
 // ---------- watched view (?watched=1): show background-swept results ----------
 async function loadWatched() {
+  // Populate the sidebar from the active profile so fit-scoring + "Best match"
+  // sort work on watched results, and it's clear what's being watched.
+  const profiles = await jfGetProfiles();
+  const activeId = await jfGetActive();
+  const prof = profiles.find(p => p.id === activeId) || profiles[0];
+  if (prof) { $("role").value = prof.role || ""; $("keywords").value = prof.keywords || ""; $("exclude").value = prof.exclude || ""; }
   const list = await jfGet(JF_KEYS.bgResults, []);
   const dayAgo = Date.now() - 86400000;
   merged = new Map(); activeSources = null;

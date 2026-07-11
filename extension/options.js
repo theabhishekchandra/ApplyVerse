@@ -50,7 +50,7 @@ function renderPlatforms() {
     const row = document.createElement("label"); row.className = "chk" + (on ? " on" : "");
     const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = on; cb.dataset.key = key;
     const name = document.createElement("span"); name.textContent = ATS_PLATFORMS[key].name;
-    const n = document.createElement("span"); n.className = "n"; n.textContent = (ATS_SEED[key] || []).length + " cos";
+    const n = document.createElement("span"); n.className = "n"; n.textContent = "· " + (ATS_SEED[key] || []).length + " cos";
     row.append(cb, name, n);
     cb.addEventListener("change", () => {
       row.classList.toggle("on", cb.checked);
