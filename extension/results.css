@@ -68,10 +68,16 @@ input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow
   display: flex; align-items: center; gap: 10px; padding: 8px 10px;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
   transition: border-color .15s, transform .1s, background .15s;
+  user-select: none;
 }
 .prov:hover { border-color: rgba(124,92,255,.45); }
-.prov.on { border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.08); }
-.prov.disabled { opacity: .4; }
+.prov.on { border-color: rgba(124,92,255,.6); background: rgba(124,92,255,.12); }
+.prov.disabled { opacity: .4; cursor: default; }
+.check { width: 19px; height: 19px; flex: 0 0 19px; border-radius: 6px; border: 1.5px solid rgba(255,255,255,.22); position: relative; transition: all .12s; }
+.prov:hover .check { border-color: var(--accent); }
+.prov.on .check { background: var(--grad-2); border-color: transparent; }
+.prov.on .check::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; font-weight: 900; color: #fff; }
+.prov.disabled .check { opacity: .4; }
 .pa { width: 28px; height: 28px; border-radius: 9px; flex: 0 0 28px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; letter-spacing: .3px; }
 .prov .name { flex: 1; font-weight: 600; font-size: 13px; }
 .prov input[type="checkbox"] { display: none; }

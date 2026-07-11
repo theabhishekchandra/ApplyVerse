@@ -77,11 +77,12 @@ for (const id of SITE_ORDER) {
   const noAgg = AGG[id] && AGG[id].noAgg;
   const row = document.createElement("div"); row.className = "prov" + (noAgg ? " disabled" : "");
   const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "p_" + id; cb.disabled = !!noAgg;
+  const check = document.createElement("span"); check.className = "check";
   const av = document.createElement("div"); av.className = "pa"; av.textContent = initials(SITES[id].name); av.style.background = avatarColor(id);
   const name = document.createElement("span"); name.className = "name"; name.textContent = SITES[id].name;
   const ps = document.createElement("span"); ps.className = "pstatus"; ps.textContent = noAgg ? "popup only" : "";
   const dot = document.createElement("span"); dot.className = "dot na";
-  row.append(cb, av, name, ps, dot);
+  row.append(cb, check, av, name, ps, dot);
   if (!noAgg) row.onclick = e => { if (e.target.tagName === "BUTTON") return; cb.checked = !cb.checked; row.classList.toggle("on", cb.checked); };
   providersEl.appendChild(row);
   provState[id] = { cb, dot, ps, row };
