@@ -405,8 +405,59 @@ $("csv").addEventListener("click", () => {
   chrome.downloads.download({ url, filename: `jobfinder-all-${entries.length}.csv`, saveAs: false });
 });
 
+// ---------- saved profiles ----------
+async function loadProfilesDropdown() {
+  const sel = $("profileSel");
+  const profiles = await jfGetProfiles();
+  const active = await jfGetActive();
+  sel.innerHTML = '<option value="">— Saved profiles —</option>';
+  profiles.forEach(p => { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name || "(unnamed)"; if (p.id === active) o.selected = true; sel.appendChild(o); });
+}
+$("profileSel").addEventListener("change", async e => {
+  const id = e.target.value; if (!id) return;
+  const p = (await jfGetProfiles()).find(x => x.id === id); if (!p) return;
+  $("role").value = p.role || ""; $("keywords").value = p.keywords || ""; $("exclude").value = p.exclude || "";
+  await jfSetActive(id);
+  statusEl.textContent = `Loaded profile “${p.name}”.`;
+});
+$("saveProfile").addEventListener("click", async () => {
+  const role = $("role").value.trim();
+  if (!role) { statusEl.textContent = "Enter a role before saving a profile."; return; }
+  const name = prompt("Profile name:", role);
+  if (name == null) return;
+  const profiles = await jfGetProfiles();
+  const p = { id: jfId(), name: name.trim() || role, role, keywords: $("keywords").value.trim(), exclude: $("exclude").value.trim() };
+  profiles.push(p);
+  await jfSetProfiles(profiles);
+  await jfSetActive(p.id);
+  await loadProfilesDropdown();
+  statusEl.textContent = `Saved profile “${p.name}”. The background watcher can now track it (⚙ settings).`;
+});
+
+// ---------- watched view (?watched=1): show background-swept results ----------
+async function loadWatched() {
+  const list = await jfGet(JF_KEYS.bgResults, []);
+  const dayAgo = Date.now() - 86400000;
+  merged = new Map(); activeSources = null;
+  for (const j of list) {
+    if (!j.title || !j.url) continue;
+    const entry = { job: j, sources: new Set([j.source || "ATS"]), isNew: j.firstSeen > dayAgo };
+    merged.set(jobKey(j), entry);
+  }
+  hasRun = true;
+  document.querySelector("h1").firstChild.textContent = "Watched results ";
+  $("csv").disabled = merged.size === 0;
+  render();
+  statusEl.textContent = list.length ? `${list.length} job(s) from the background watcher.` : "No watched results yet — enable the watcher in ⚙ settings.";
+}
+
 // ---------- init ----------
 (async function init() {
+  chrome.runtime.sendMessage({ type: "jf_clear_badge" }).catch(() => {});
+  await loadProfilesDropdown();
+  const watched = new URLSearchParams(location.search).get("watched");
+  if (watched) { await loadWatched(); return; }
+
   for (const id of ["linkedin", "shine", "cutshort", "foundit", "ats:greenhouse", "ats:ashby"]) if (provState[id]) provState[id].cb.checked = true;
   syncProvClasses();
   $("role").value = "android developer";

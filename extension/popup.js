@@ -229,11 +229,13 @@ $("openAll").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("results.html") });
   window.close();
 });
+$("settings").addEventListener("click", e => { e.preventDefault(); chrome.runtime.openOptionsPage(); window.close(); });
 siteSel.addEventListener("change", () => renderForm(siteSel.value));
 startBtn.addEventListener("click", start);
 csvBtn.addEventListener("click", downloadCsv);
 
 (async function init() {
+  chrome.runtime.sendMessage({ type: "jf_clear_badge" }).catch(() => {});
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   activeTab = tab || null;
   const detected = activeTab ? detectSiteId(hostOf(activeTab.url)) : null;

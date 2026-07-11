@@ -19,6 +19,10 @@
       </div>
 
       <div class="rail-scroll">
+        <div class="group profile-bar">
+          <select id="profileSel" title="Load a saved profile"><option value="">— Saved profiles —</option></select>
+          <button id="saveProfile" class="linkbtn" title="Save current fields as a profile">＋ Save</button>
+        </div>
         <div class="group">
           <div class="fld"><label>Role / profile</label><input id="role" type="text" placeholder="android developer"></div>
           <div class="fld"><label>Location</label><input id="loc" type="text" placeholder="India"></div>
@@ -52,6 +56,7 @@
       <div class="rail-foot">
         <button id="search" class="primary block">▶ Search selected</button>
         <div id="status" class="status"></div>
+        <a class="settings-link" id="settingsLink" href="options.html">⚙ Automation &amp; settings</a>
       </div>
     </aside>
 
@@ -95,6 +100,7 @@
 
   <script src="sites.js"></script>
   <script src="ats.js"></script>
+  <script src="store.js"></script>
   <script src="results.js"></script>
 </body>
 </html>

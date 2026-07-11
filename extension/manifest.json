@@ -3,7 +3,7 @@
   "name": "Job Finder",
   "version": "1.1.0",
   "description": "Search developer jobs across 12 boards + company ATS (Greenhouse/Lever/Ashby) from one popup — token-sweep, Google-dork builder, filters, only-new, CSV.",
-  "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads", "cookies"],
+  "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads", "cookies", "alarms", "notifications"],
   "host_permissions": [
     "https://*.ziprecruiter.com/*",
     "https://*.linkedin.com/*",
@@ -28,6 +28,8 @@
     "https://apply.workable.com/*",
     "https://*.recruitee.com/*"
   ],
+  "background": { "service_worker": "background.js" },
+  "options_page": "options.html",
   "action": {
     "default_title": "Job Finder",
     "default_popup": "popup.html",

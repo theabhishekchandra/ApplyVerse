@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Job Finder — Settings & automation</title>
+  <link rel="icon" type="image/png" href="icons/icon48.png">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <img class="logo" src="icons/icon48.png" alt="Logo">
+      <div>
+        <h1>Settings &amp; automation</h1>
+        <a class="back" href="results.html">← Search all providers</a>
+      </div>
+    </div>
+    <p class="lede">Let Job Finder watch for you. It runs the <b>company-ATS sweep</b> on a
+      schedule in the background (no tabs, no login), and pings you when <b>new</b> jobs
+      matching a saved profile appear.</p>
+
+    <div class="grid">
+      <!-- ============ automation ============ -->
+      <div class="panel">
+        <h2>Background watcher</h2>
+        <label class="switch">
+          <input type="checkbox" id="autoEnabled">
+          <span class="track"></span>
+          <span class="switch-label">Enable scheduled sweeps</span>
+        </label>
+
+        <div class="fld">
+          <label>Check every</label>
+          <select id="intervalMin">
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="180">3 hours</option>
+            <option value="360">6 hours</option>
+            <option value="720">12 hours</option>
+            <option value="1440">Daily</option>
+          </select>
+        </div>
+
+        <label class="inline"><input type="checkbox" id="notify"> Desktop notification on new matches</label>
+
+        <div class="fld" style="margin-top:14px">
+          <label>Platforms to sweep</label>
+          <div id="platforms" class="checks"></div>
+        </div>
+
+        <div class="run-row">
+          <button id="runNow" class="primary">▶ Run sweep now</button>
+          <span id="runStatus" class="run-status"></span>
+        </div>
+        <div id="lastRun" class="last-run"></div>
+      </div>
+
+      <!-- ============ profiles ============ -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Search profiles</h2>
+          <button id="addProfile" class="ghost small">＋ New profile</button>
+        </div>
+        <p class="dim" style="margin-top:-4px">The <b>active</b> profile (radio) is what the background watcher searches for.</p>
+        <div id="profiles" class="profiles"></div>
+        <div id="noProfiles" class="dim empty-note" hidden>No profiles yet — create one to enable the watcher.</div>
+      </div>
+    </div>
+
+    <div class="watched">
+      <div class="watched-head">
+        <h2>Watched results <span class="dim" id="watchedCount"></span></h2>
+        <a class="linkbtn" id="openWatched" href="results.html?watched=1">Open full list →</a>
+      </div>
+      <div id="watchedList" class="wlist"></div>
+    </div>
+  </div>
+
+  <script src="store.js"></script>
+  <script src="ats.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

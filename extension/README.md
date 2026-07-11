@@ -80,6 +80,25 @@ and they never bypass a CAPTCHA.
 > After editing extension files, **reload the extension** at
 > `chrome://extensions` (↻ on the card) for changes to take effect.
 
+## Automation — let it watch for you (⚙ settings)
+
+Open **⚙ Automation & settings** (link in the popup, or the results sidebar) to
+turn Job Finder into a background watcher:
+
+1. **Save a search profile** — name a role + keywords + exclude (or hit **＋ Save**
+   on the results page to capture the current fields). Pick one as **active**.
+2. **Enable scheduled sweeps** and choose an interval (1h–daily). A background
+   service worker runs the **company-ATS sweep** for the active profile — pure
+   `fetch`, no tabs, no login — on that schedule.
+3. When **new** jobs (unseen since the last run) appear, you get a **desktop
+   notification** and a **count badge** on the toolbar icon. Click the
+   notification (or **Run sweep now** in settings) to open the **Watched results**
+   list; opening the popup/results clears the badge.
+
+Only the fetch-based ATS sweep runs in the background (the DOM-scrape job boards
+need a visible tab, so they stay manual). Boundaries unchanged — public read
+endpoints, no CAPTCHA bypass.
+
 ## Use (single site)
 
 1. Open the job site and run its normal search (set role/location/filters
