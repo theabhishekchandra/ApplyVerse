@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate manifest.json
+        run: |
+          node -e '
+            const m = require("./extension/manifest.json");
+            for (const k of ["manifest_version", "name", "version"])
+              if (!m[k]) throw new Error("manifest.json missing required field: " + k);
+            if (m.manifest_version !== 3) throw new Error("expected manifest_version 3");
+            console.log("manifest ok:", m.name, "v" + m.version);
+          '
+
+      - name: Syntax-check all extension JS
+        run: |
+          set -e
+          fail=0
+          for f in $(find extension -name '*.js' -not -path '*/dist/*'); do
+            if node --check "$f"; then
+              echo "ok   $f"
+            else
+              echo "FAIL $f"; fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Build the shareable zip (smoke test)
+        run: bash extension/scripts/pack.sh

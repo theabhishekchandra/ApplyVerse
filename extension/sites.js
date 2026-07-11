@@ -28,9 +28,9 @@ var SITES = {
     match: /(^|\.)ziprecruiter\.com$/i,
     note: "Be on a ZipRecruiter results page. Blank Profile/Location = use the page's current search.",
     fields: [
-      { k: "profile",  label: "Profile / role (blank = page's search)", t: "text", def: "", ph: "android developer" },
+      { k: "profile",  label: "Profile / role (blank = page's search)", t: "text", def: "", ph: "software engineer" },
       { k: "location", label: "Location (blank = page's location)", t: "text", def: "", ph: "New York, NY" },
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxPages", label: "Max pages", t: "num", def: 15 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -98,9 +98,9 @@ var SITES = {
     match: /(^|\.)linkedin\.com$/i,
     note: "Be logged in on any LinkedIn page. Uses the public guest jobs API.",
     fields: [
-      { k: "profile",  label: "Profile / role", t: "text", def: "", ph: "android developer" },
+      { k: "profile",  label: "Profile / role", t: "text", def: "", ph: "software engineer" },
       { k: "location", label: "Location", t: "text", def: "India", ph: "India" },
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 120 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 },
@@ -171,7 +171,7 @@ var SITES = {
     match: /(^|\.)naukri\.com$/i,
     note: "Search your role on Naukri first, be on PAGE 1 of results. Scrapes the page + auto-clicks Next.",
     fields: [
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxPages", label: "Max pages", t: "num", def: 15 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -257,7 +257,7 @@ var SITES = {
     match: /(^|\.)wellfound\.com$/i,
     note: "On wellfound.com/jobs set your role/filters first. Scrolls to load more, then scrapes.",
     fields: [
-      { k: "keywords",   label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter, mobile", ph: "android, kotlin" },
+      { k: "keywords",   label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",    label: "Exclude words", t: "text", def: "", ph: "senior, frontend, backend" },
       { k: "maxScrolls", label: "Max scrolls", t: "num", def: 40 },
       { k: "stop",       label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -325,7 +325,7 @@ var SITES = {
     match: /(^|\.)cutshort\.io$/i,
     note: "Open cutshort.io/jobs/<role>-jobs. Scrapes the single results page (~50 jobs).",
     fields: [
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, react" },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
     ],
@@ -376,8 +376,8 @@ var SITES = {
     match: /(^|\.)instahyre\.com$/i,
     note: "Be logged in on Instahyre. Uses the JSON job_search API; Skill maps to Instahyre's skill filter.",
     fields: [
-      { k: "skill",    label: "Skill / Profile (Instahyre skill filter)", t: "text", def: "Android", ph: "Android, React, Data Science" },
-      { k: "keywords", label: "Keywords (extra title/skill filter; blank = all)", t: "text", def: "", ph: "android, kotlin" },
+      { k: "skill",    label: "Skill / Profile (Instahyre skill filter)", t: "text", def: "", ph: "Android, React, Data Science" },
+      { k: "keywords", label: "Keywords (extra title/skill filter; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, intern" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 300 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -431,7 +431,7 @@ var SITES = {
     match: /(^|\.)workatastartup\.com$/i,
     note: "On workatastartup.com/jobs pick a role (See ▾) or search first. Scrapes the shown jobs.",
     fields: [
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter, mobile, react native", ph: "android, mobile" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, backend" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, staff" },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
     ],
@@ -478,8 +478,8 @@ var SITES = {
     note: "Per-company ATS. Enter a Company id (from careers.smartrecruiters.com/<Company>). Runs from any tab.",
     fields: [
       { k: "company",  label: "Company id (from careers URL)", t: "text", def: "", ph: "BoschGroup" },
-      { k: "q",        label: "Search term (server-side)", t: "text", def: "android", ph: "android developer" },
-      { k: "keywords", label: "Keywords (extra filter; blank = all)", t: "text", def: "", ph: "android, kotlin" },
+      { k: "q",        label: "Search term (server-side)", t: "text", def: "", ph: "software engineer" },
+      { k: "keywords", label: "Keywords (extra filter; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 300 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -534,7 +534,7 @@ var SITES = {
     note: "Per-company ATS. Enter a board token (from boards.greenhouse.io/<token> or a jobs URL). Runs from any tab.",
     fields: [
       { k: "company",  label: "Board token (from careers URL)", t: "text", def: "", ph: "stripe" },
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
     ],
@@ -574,7 +574,7 @@ var SITES = {
     note: "Per-company ATS. Enter a company token (from jobs.lever.co/<token>). Runs from any tab.",
     fields: [
       { k: "company",  label: "Company token (from careers URL)", t: "text", def: "", ph: "spotify" },
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
     ],
@@ -617,7 +617,7 @@ var SITES = {
     note: "Per-company ATS. Enter a company token (from jobs.ashbyhq.com/<token>). Runs from any tab.",
     fields: [
       { k: "company",  label: "Company token (from careers URL)", t: "text", def: "", ph: "openai" },
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
     ],
@@ -661,7 +661,7 @@ var SITES = {
     note: "Per-company ATS. Enter a subdomain token (from apply.workable.com/<token>). Runs from any tab.",
     fields: [
       { k: "company",  label: "Account token (from careers URL)", t: "text", def: "", ph: "acme" },
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
     ],
@@ -705,7 +705,7 @@ var SITES = {
     note: "Per-company ATS. Enter a subdomain token (from <token>.recruitee.com). Runs from any tab.",
     fields: [
       { k: "company",  label: "Subdomain token (from careers URL)", t: "text", def: "", ph: "acme" },
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
     ],
@@ -745,7 +745,7 @@ var SITES = {
     match: /(^|\.)shine\.com$/i,
     note: "Open shine.com/job-search/<role>-jobs. Fetches result pages and parses them.",
     fields: [
-      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxPages", label: "Max pages", t: "num", def: 30 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -759,7 +759,7 @@ var SITES = {
       const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
       const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
       const roleMatch = location.pathname.match(/\/job-search\/(.+?)-jobs(?:-\d+)?$/);
-      const curRole = roleMatch ? roleMatch[1] : "android-developer";
+      const curRole = roleMatch ? roleMatch[1] : "software-developer";
       const basePath = "https://www.shine.com/job-search/" + slugify(curRole) + "-jobs";
       const txt = (el, sel) => { const n = el.querySelector(sel); return n ? (n.textContent || "").trim() : ""; };
       function extractCard(card) {
@@ -809,9 +809,9 @@ var SITES = {
     match: /(^|\.)indeed\.com$/i,
     note: "Be on in.indeed.com/jobs?q=…&l=… . Fetches result pages. Stops (never bypasses) on CAPTCHA.",
     fields: [
-      { k: "profile",  label: "Profile / role (blank = page's q)", t: "text", def: "", ph: "android developer" },
+      { k: "profile",  label: "Profile / role (blank = page's q)", t: "text", def: "", ph: "software engineer" },
       { k: "location", label: "Location (blank = page's l)", t: "text", def: "", ph: "India" },
-      { k: "keywords", label: "Keywords (extra filter; blank = all)", t: "text", def: "", ph: "android, kotlin" },
+      { k: "keywords", label: "Keywords (extra filter; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxPages", label: "Max pages", t: "num", def: 8 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -879,7 +879,7 @@ var SITES = {
     match: /(^|\.)glassdoor\.(co\.in|com)$/i,
     note: "Open your Glassdoor jobs search (page 1). Clicks 'Show more jobs' in a loop and scrapes.",
     fields: [
-      { k: "keywords",  label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
+      { k: "keywords",  label: "Keywords (ANY match; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",   label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxClicks", label: "Max 'show more' clicks", t: "num", def: 20 },
       { k: "stop",      label: "Stop after N (0=all)", t: "num", def: 0 }
@@ -950,8 +950,8 @@ var SITES = {
     match: /(^|\.)foundit\.in$/i,
     note: "Be logged in on foundit.in. Uses the JSON jobsearch API.",
     fields: [
-      { k: "profile",  label: "Profile / search role", t: "text", def: "android developer", ph: "android developer" },
-      { k: "keywords", label: "Keywords (extra title/skill filter; blank = all)", t: "text", def: "", ph: "android, kotlin" },
+      { k: "profile",  label: "Profile / search role", t: "text", def: "", ph: "software engineer" },
+      { k: "keywords", label: "Keywords (extra title/skill filter; blank = all)", t: "text", def: "", ph: "python, react" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxJobs",  label: "Max jobs", t: "num", def: 300 },
       { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }

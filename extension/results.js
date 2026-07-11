@@ -584,7 +584,7 @@ async function loadWatched() {
 
   for (const id of ["linkedin", "shine", "cutshort", "foundit", "ats:greenhouse", "ats:ashby"]) if (provState[id]) provState[id].cb.checked = true;
   syncProvClasses();
-  $("role").value = "android developer";
-  $("keywords").value = "android, kotlin, jetpack, flutter";
+  // Start blank — the inputs show generic example placeholders; the user fills
+  // in their own role/keywords. (No personal defaults baked in.)
   await recheckLogins();
 })();

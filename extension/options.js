@@ -87,10 +87,10 @@ function profileCard(p) {
 
   const grid = document.createElement("div"); grid.className = "prof-grid";
   grid.append(
-    field("Role", p.role, "android developer", v => { p.role = v; commitProfiles(); }, "full"),
-    field("Keywords (any match)", p.keywords, "android, kotlin, flutter", v => { p.keywords = v; commitProfiles(); }),
-    field("Exclude", p.exclude, "senior, sales", v => { p.exclude = v; commitProfiles(); }),
-    field("Location (blank = anywhere)", p.location, "Bengaluru, India", v => { p.location = v; commitProfiles(); }, "full")
+    field("Role", p.role, "e.g. software engineer", v => { p.role = v; commitProfiles(); }, "full"),
+    field("Keywords (any match)", p.keywords, "e.g. python, react, aws", v => { p.keywords = v; commitProfiles(); }),
+    field("Exclude", p.exclude, "e.g. senior, sales", v => { p.exclude = v; commitProfiles(); }),
+    field("Location (blank = anywhere)", p.location, "e.g. Remote, London", v => { p.location = v; commitProfiles(); }, "full")
   );
   card.append(top, grid);
   return card;
@@ -105,7 +105,7 @@ function field(label, val, ph, oninput, cls) {
 let commitTimer = null;
 function commitProfiles() { clearTimeout(commitTimer); commitTimer = setTimeout(() => jfSetProfiles(profiles), 250); }
 $("addProfile").addEventListener("click", async () => {
-  const p = { id: jfId(), name: "New profile", role: "android developer", keywords: "android, kotlin, jetpack, flutter", exclude: "", location: "" };
+  const p = { id: jfId(), name: "New profile", role: "", keywords: "", exclude: "", location: "" };
   profiles.push(p);
   if (!activeId) { activeId = p.id; await jfSetActive(p.id); }
   await jfSetProfiles(profiles);

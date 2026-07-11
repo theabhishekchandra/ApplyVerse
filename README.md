@@ -115,3 +115,20 @@ ApplyVerse/
 └── docs/
     └── TECHNIQUES.md      ← per-site scraping method, selectors, gotchas
 ```
+
+## Contributing
+
+Contributions are welcome — bug fixes, new job boards, new ATS providers, UI
+polish, and docs. Please read **[CONTRIBUTING.md](CONTRIBUTING.md)** first: it
+covers the dev setup (load-unpacked, no build step), the project layout, coding
+conventions, and the **account-safety boundaries** every PR must respect (public
+read endpoints only, human-paced, never bypass a CAPTCHA).
+
+- 🐛 Found a bug or want a feature? Open an issue (templates provided).
+- 🔒 Security issue? See **[SECURITY.md](SECURITY.md)** — report it privately, not
+  as a public issue.
+- 🤝 Be kind: **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**.
+
+## License
+
+[MIT](LICENSE). By contributing you agree your contributions are MIT-licensed.
