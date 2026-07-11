@@ -199,14 +199,29 @@ function syncProvClasses() { for (const id of SELECTABLE) provState[id].row.clas
 $("selAll").addEventListener("change", e => { for (const id of SELECTABLE) provState[id].cb.checked = e.target.checked; syncProvClasses(); });
 
 // ---------- login pre-check ----------
-async function checkLogin(id) {
+// Broadened auth-cookie name heuristic — real sites name session cookies many ways.
+const AUTH_RX = /(^|[_-])(at|access|refresh|token|auth|sess|session|login|logged|signin|signed|sso|jwt|sid|jid|uid|userid|remember|identity)/i;
+// Names that appear on the login page WITHOUT being logged in — ignore for diffs.
+const NON_AUTH_RX = /(^_ga|_gid|_gcl|_fbp|_fbc|utm|amplitude|mixpanel|hubspot|__cf|cf_|optanon|consent|cookie_consent|ajs_anonymous)/i;
+function cookiesAuthed(cookies, baseline) {
+  // 1) a cookie whose name looks like an auth/session token, with a real value.
+  if (cookies.some(c => AUTH_RX.test(c.name) && c.value && c.value.length > 6)) return true;
+  // 2) a substantial NEW cookie appeared since we opened the login page — i.e. the
+  //    site set something on sign-in (covers oddly-named session cookies).
+  if (baseline && cookies.some(c => !baseline.has(c.name) && !NON_AUTH_RX.test(c.name) && c.value && c.value.length >= 12)) return true;
+  return false;
+}
+async function checkLogin(id, baseline) {
   const a = AGG[id];
   if (!a || a.noAgg || !a.needsLogin) return "ok";
   try {
     const cookies = await chrome.cookies.getAll({ domain: a.domain });
-    const authed = cookies.some(c => /(^|_|-)(at|token|auth|sess|session|login|sso|jwt|jid|uid)/i.test(c.name) && c.value && c.value.length > 6);
-    return authed ? "ok" : "out";
+    return cookiesAuthed(cookies, baseline) ? "ok" : "out";
   } catch (e) { return "na"; }
+}
+async function domainCookieNames(id) {
+  try { return new Set((await chrome.cookies.getAll({ domain: AGG[id].domain })).map(c => c.name)); }
+  catch (e) { return new Set(); }
 }
 function setLight(id, cls, text) {
   const s = provState[id]; if (!s) return;
@@ -215,50 +230,57 @@ function setLight(id, cls, text) {
   const ex = s.row.querySelector(".loginbtn"); if (ex) ex.remove();
   if (cls === "out" && AGG[id] && AGG[id].needsLogin) {
     const b = document.createElement("button"); b.className = "loginbtn"; b.textContent = "Log in";
-    b.onclick = e => { e.stopPropagation(); openLogin(id, b); };
+    b.onclick = e => { e.stopPropagation(); openLogin(id); };
     s.ps.after(b);
   }
 }
 
-// Open a provider's login page in a NEW tab, then auto-detect success: poll the
-// login cookie (also re-check the moment the user switches back here), and when
-// it flips to logged-in, mark it green, auto-select it, and toast — no manual
-// "↻ logins" needed.
+// Open a provider's login page in a NEW tab, then auto-detect success: snapshot
+// the logged-out cookies as a baseline, poll for the session cookie (and re-check
+// the instant the user switches back here), and — as a guaranteed fallback — show
+// a "✓ I've logged in" button so it always works even if detection misses.
 let loginWatch = null;
-function openLogin(id, btn) {
-  const url = AGG[id].loginUrl || AGG[id].url({ role: "", loc: "" });
-  chrome.tabs.create({ url, active: true });
-  if (btn) { btn.textContent = "opening…"; btn.disabled = true; setTimeout(() => { btn.textContent = "Log in"; btn.disabled = false; }, 1500); }
+async function openLogin(id) {
+  const a = AGG[id];
+  const baseline = await domainCookieNames(id);      // snapshot BEFORE the tab sets anything
+  chrome.tabs.create({ url: a.loginUrl || a.url({ role: "", loc: "" }), active: true });
   toast(`Opening ${nameOf(id)} login — sign in, then come back`, "ok");
-  watchLogin(id);
+  markPending(id);
+  watchLogin(id, baseline);
 }
-function watchLogin(id) {
+function markPending(id) {
+  const s = provState[id]; if (!s) return;
+  s.dot.className = "dot run";                        // yellow, pulsing
+  s.ps.textContent = "waiting…";
+  const ex = s.row.querySelector(".loginbtn"); if (ex) ex.remove();
+  const b = document.createElement("button"); b.className = "loginbtn confirm"; b.textContent = "✓ Logged in";
+  b.title = "I've finished logging in — mark this provider ready";
+  b.onclick = e => { e.stopPropagation(); loginDetected(id, true); };
+  s.ps.after(b);
+}
+function loginDetected(id, manual) {
+  if (loginWatch && loginWatch.id === id) { clearInterval(loginWatch.iv); loginWatch = null; }
+  setLight(id, "ok", "logged in");
+  if (provState[id] && !provState[id].cb.checked) { provState[id].cb.checked = true; syncProvClasses(); }
+  toast(`✅ ${nameOf(id)} ready — selected for search`, "ok");
+}
+function watchLogin(id, baseline) {
   if (loginWatch) clearInterval(loginWatch.iv);
   const t0 = Date.now();
   const tick = async () => {
-    const st = await checkLogin(id);
-    if (st === "ok") {
-      clearInterval(loginWatch.iv); loginWatch = null;
-      setLight(id, "ok", "logged in");
-      if (provState[id] && !provState[id].cb.checked) { provState[id].cb.checked = true; syncProvClasses(); }
-      toast(`✅ Logged into ${nameOf(id)} — selected for search`, "ok");
-    } else if (Date.now() - t0 > 180000) { clearInterval(loginWatch.iv); loginWatch = null; }
+    if (!loginWatch) return;
+    const st = await checkLogin(id, baseline);
+    if (st === "ok") loginDetected(id);
+    else if (Date.now() - t0 > 300000) { clearInterval(loginWatch.iv); loginWatch = null; }   // give up after 5 min
   };
-  loginWatch = { id, iv: setInterval(tick, 2500) };
+  loginWatch = { id, baseline, iv: setInterval(tick, 2000) };
 }
-// Coming back to this tab is the strongest "I just logged in" signal — re-check
-// immediately (background timers are throttled, so don't rely on polling alone).
-document.addEventListener("visibilitychange", () => {
+// Switching back to this tab is the strongest "I just logged in" signal — re-check
+// immediately (background timers are throttled, so polling alone can be slow).
+document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible" && loginWatch) {
-    const id = loginWatch.id;
-    checkLogin(id).then(st => {
-      if (st === "ok") {
-        if (loginWatch) { clearInterval(loginWatch.iv); loginWatch = null; }
-        setLight(id, "ok", "logged in");
-        if (provState[id] && !provState[id].cb.checked) { provState[id].cb.checked = true; syncProvClasses(); }
-        toast(`✅ Logged into ${nameOf(id)} — selected for search`, "ok");
-      }
-    });
+    const { id, baseline } = loginWatch;
+    if ((await checkLogin(id, baseline)) === "ok") loginDetected(id);
   }
 });
 async function recheckLogins() {

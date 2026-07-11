@@ -114,7 +114,8 @@ input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow
 .dot.done { background: var(--done); box-shadow: 0 0 8px var(--done); }
 .dot.na { background: #45507080; }
 .pstatus { font-size: 9.5px; color: var(--muted); white-space: nowrap; }
-.loginbtn { font-size: 10px; padding: 3px 8px; border-radius: 7px; border: 0; background: linear-gradient(135deg,#d69a2e,#a9741d); color: #fff; cursor: pointer; font-weight: 700; }
+.loginbtn { font-size: 10px; padding: 3px 8px; border-radius: 7px; border: 0; background: linear-gradient(135deg,#d69a2e,#a9741d); color: #fff; cursor: pointer; font-weight: 700; white-space: nowrap; }
+.loginbtn.confirm { background: linear-gradient(135deg,#2ea36a,#1d7a4d); }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
 
 .mini-chk { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; }
