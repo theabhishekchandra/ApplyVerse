@@ -1,0 +1,142 @@
+/* ================================================================
+   SmartRecruiters – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   SmartRecruiters is an ATS: each employer has its own careers page
+   at careers.smartrecruiters.com/<Company>. There is no single global
+   board — so this tool queries ONE company at a time via SmartRecruiters'
+   public postings API (no login, no CAPTCHA).
+
+   HOW TO USE
+   1. Open any SmartRecruiters careers page
+      (careers.smartrecruiters.com/<Company>) — or just run this
+      anywhere and type the company id in the form.
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Set Company (e.g. BoschGroup) + a search term → ▶ Start.
+
+   TIP: the Company id is the path segment in the careers URL, e.g.
+   careers.smartrecruiters.com/BoschGroup  →  Company = "BoschGroup".
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const mk = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  function inputEl(id, val, ph) { const e = document.createElement("input"); e.id = id; e.value = val || ""; e.placeholder = ph || ""; e.style.cssText = "width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #00a562;border-radius:6px;background:#07231a;color:#eafff5;font-size:12px"; return e; }
+  function fieldBlock(label, id, val, ph) { const w = mk("div"); w.appendChild(mk("label", "display:block;margin:8px 0 3px;font-size:11px;opacity:.85", label)); w.appendChild(inputEl(id, val, ph)); return w; }
+  function checkBlock(label, id, on) { const l = mk("label", "display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer"); const c = document.createElement("input"); c.type = "checkbox"; c.id = id; c.checked = !!on; l.appendChild(c); l.appendChild(document.createTextNode(" " + label)); return l; }
+
+  // detect company from a careers.smartrecruiters.com/<Company> URL
+  const cm = location.hostname.includes("smartrecruiters") ? location.pathname.match(/^\/([A-Za-z0-9._-]+)/) : null;
+  const curCompany = cm ? cm[1] : "";
+
+  $("sr-panel")?.remove();
+  const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#04170f;color:#eafff5;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #00a562;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
+  p.id = "sr-panel";
+  const header = mk("div", "padding:10px 12px;background:#0a6b47;font-weight:600;display:flex;justify-content:space-between;align-items:center");
+  header.appendChild(mk("span", "", "◆ SmartRecruiters Finder"));
+  const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
+
+  const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "sr-form";
+  form.appendChild(fieldBlock("Company id (from careers URL)", "sr-company", curCompany, "e.g. BoschGroup"));
+  form.appendChild(fieldBlock("Search term (server-side, e.g. role)", "sr-q", "android", "android developer"));
+  form.appendChild(fieldBlock("Keywords (extra client filter; blank = all)", "sr-keywords", "", "android, kotlin, mobile"));
+  form.appendChild(fieldBlock("Exclude words (comma-sep — optional)", "sr-exclude", "", "senior, manager"));
+  const two = mk("div", "display:flex;gap:8px");
+  const c1 = mk("div", "flex:1"); c1.appendChild(fieldBlock("Max jobs", "sr-maxjobs", "300"));
+  const c2 = mk("div", "flex:1"); c2.appendChild(fieldBlock("Stop after N (0=all)", "sr-stop", "0"));
+  two.appendChild(c1); two.appendChild(c2); form.appendChild(two);
+  const opts = mk("div", "margin-top:8px;padding-top:6px;border-top:1px solid #00a562");
+  opts.appendChild(checkBlock("Open each match in a new tab", "sr-opentabs", false));
+  form.appendChild(opts);
+  const startBtn = mk("button", "width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;background:#00c574;color:#04170f;font-weight:700;font-size:13px;cursor:pointer", "▶ Start search");
+  startBtn.id = "sr-start"; form.appendChild(startBtn); p.appendChild(form);
+  const status = mk("div", "padding:8px 12px;border-top:1px solid #00a562;font-size:12px;display:none"); status.id = "sr-status";
+  const list = mk("div", "overflow:auto;padding:2px 0"); list.id = "sr-list";
+  p.appendChild(status); p.appendChild(list);
+  document.body.appendChild(p);
+  closeX.onclick = () => p.remove();
+  startBtn.onclick = start;
+
+  const say = m => { status.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = mk("div", "padding:6px 12px;border-bottom:1px solid #0e3a2a");
+    const a = mk("a", "color:#4fe0a5;text-decoration:none;font-weight:600;display:block", r.title);
+    a.href = r.url; a.target = "_blank"; row.appendChild(a);
+    row.appendChild(mk("div", "font-size:11px;opacity:.8", [r.location, r.department].filter(Boolean).join(" · ")));
+    list.appendChild(row); list.scrollTop = list.scrollHeight;
+  }
+
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const company = $("sr-company").value.trim();
+    if (!company) { alert("Enter a Company id (from a careers.smartrecruiters.com/<Company> URL)."); return; }
+    const cfg = {
+      COMPANY:  company,
+      Q:        $("sr-q").value.trim(),
+      KEYWORDS: splitList($("sr-keywords").value),
+      EXCLUDE:  splitList($("sr-exclude").value),
+      MAX_JOBS: Math.max(20, parseInt($("sr-maxjobs").value) || 300),
+      STOP_AT:  Math.max(0, parseInt($("sr-stop").value) || 0),
+      OPEN_TABS:$("sr-opentabs").checked,
+      DELAY_MS: 500,
+    };
+    form.style.display = "none"; status.style.display = "block";
+    await runSearch(cfg);
+  }
+
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    const base = `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(cfg.COMPANY)}/postings`;
+
+    say(`Searching ${cfg.COMPANY} for "${cfg.Q || "all"}"...`);
+    const seen = new Set(), matches = [];
+    let total = Infinity;
+
+    for (let offset = 0; offset < Math.min(cfg.MAX_JOBS, total); offset += 100) {
+      let data;
+      try {
+        const url = `${base}?limit=100&offset=${offset}` + (cfg.Q ? "&q=" + encodeURIComponent(cfg.Q) : "");
+        const r = await fetch(url, { headers: { Accept: "application/json" } });
+        if (r.status !== 200) { say(`⚠ HTTP ${r.status} — check the Company id.`); break; }
+        data = await r.json();
+      } catch (e) { say(`⚠ request failed — stopping.`); break; }
+
+      total = data.totalFound ?? total;
+      const posts = data.content || [];
+      if (!posts.length) { say(`✅ Reached the end (${matches.length} kept).`); break; }
+
+      for (const o of posts) {
+        const id = o.id;
+        const url = `https://careers.smartrecruiters.com/${cfg.COMPANY}/${id}`;
+        if (seen.has(id)) continue; seen.add(id);
+        const title = o.name || "";
+        const loc = o.location?.fullLocation || [o.location?.city, o.location?.country].filter(Boolean).join(", ");
+        const department = o.department?.label || o.function?.label || "";
+        const text = [title, department].join(" ");
+        if (kwRx && !kwRx.test(text)) continue;
+        if (exRx && exRx.test(text)) continue;
+        const rec = { title, location: loc + (o.location?.remote ? " (remote)" : ""), department, posted: (o.releasedDate || "").slice(0, 10), url };
+        matches.push(rec); addRow(rec);
+        console.log(`✓ ${title} — ${loc} — ${url}`);
+      }
+      say(`fetched ${Math.min(offset + 100, total)} / ${total} · ${matches.length} match(es)`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
+      await delay(cfg.DELAY_MS);
+    }
+
+    if (!matches.length) { say("No matches (check Company id / search term, or clear Keywords)."); return; }
+
+    console.table(matches.map(({ title, location, department, posted }) => ({ title, location, department, posted })));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Title,Location,Department,Posted,URL\n" +
+      matches.map(m => [q(m.title), q(m.location), q(m.department), q(m.posted), q(m.url)].join(",")).join("\n");
+    const a = mk("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `smartrecruiters-${cfg.COMPANY.toLowerCase()}-jobs.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(500); }
+  }
+})();

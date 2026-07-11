@@ -1,0 +1,157 @@
+/* ================================================================
+   Glassdoor – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   Paste into the DevTools Console on a Glassdoor jobs search page
+   (glassdoor.co.in/Job/...). A form appears — set Keywords / Exclude,
+   click ▶ Start. CSV downloads when done.
+
+   HOW IT WORKS
+   • Glassdoor is a React app that loads jobs 30 at a time behind a
+     "Show more jobs" button. The tool scrapes the shown cards, clicks
+     "Show more jobs", waits for the new batch, and repeats — all in
+     one run (state is preserved; no navigation).
+   • Fields: title, company, location, salary, job URL.
+   • It scrapes the search you're currently on — set your role/filters
+     in Glassdoor's own search first, on PAGE 1, then run this.
+
+   ⚠ Glassdoor is bot-sensitive: keep clicks modest and delay high.
+     If cards stop loading, you may have hit a limit — re-run later.
+
+   HOW TO USE
+   1. Open your Glassdoor jobs search.
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Fill the form → ▶ Start.
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const mk = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  function inputEl(id, val, ph) { const e = document.createElement("input"); e.id = id; e.value = val || ""; e.placeholder = ph || ""; e.style.cssText = "width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #0caa41;border-radius:6px;background:#07200f;color:#eafff0;font-size:12px"; return e; }
+  function fieldBlock(label, id, val, ph) { const w = mk("div"); w.appendChild(mk("label", "display:block;margin:8px 0 3px;font-size:11px;opacity:.85", label)); w.appendChild(inputEl(id, val, ph)); return w; }
+  function checkBlock(label, id, on) { const l = mk("label", "display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer"); const c = document.createElement("input"); c.type = "checkbox"; c.id = id; c.checked = !!on; l.appendChild(c); l.appendChild(document.createTextNode(" " + label)); return l; }
+
+  $("gdf-panel")?.remove();
+  const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#04160a;color:#eafff0;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #0caa41;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
+  p.id = "gdf-panel";
+  const header = mk("div", "padding:10px 12px;background:#0a7a30;font-weight:600;display:flex;justify-content:space-between;align-items:center");
+  header.appendChild(mk("span", "", "◆ Glassdoor Job Finder"));
+  const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
+
+  const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "gdf-form";
+  form.appendChild(fieldBlock("Keywords (comma-sep — ANY match; blank = all)", "gdf-keywords", "android, kotlin, jetpack, flutter", "android, kotlin"));
+  form.appendChild(fieldBlock("Exclude words (comma-sep — optional)", "gdf-exclude", "", "senior, sales, coordinator"));
+  const two = mk("div", "display:flex;gap:8px");
+  const c1 = mk("div", "flex:1"); c1.appendChild(fieldBlock("Max 'show more' clicks", "gdf-maxclicks", "20"));
+  const c2 = mk("div", "flex:1"); c2.appendChild(fieldBlock("Stop after N (0=all)", "gdf-stop", "0"));
+  two.appendChild(c1); two.appendChild(c2); form.appendChild(two);
+  const opts = mk("div", "margin-top:8px;padding-top:6px;border-top:1px solid #0caa41");
+  opts.appendChild(checkBlock("Open each match in a new tab", "gdf-opentabs", false));
+  form.appendChild(opts);
+  const startBtn = mk("button", "width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;background:#0caa41;color:#04160a;font-weight:700;font-size:13px;cursor:pointer", "▶ Start search");
+  startBtn.id = "gdf-start"; form.appendChild(startBtn); p.appendChild(form);
+  const status = mk("div", "padding:8px 12px;border-top:1px solid #0caa41;font-size:12px;display:none"); status.id = "gdf-status";
+  const list = mk("div", "overflow:auto;padding:2px 0"); list.id = "gdf-list";
+  p.appendChild(status); p.appendChild(list);
+  document.body.appendChild(p);
+  closeX.onclick = () => p.remove();
+  startBtn.onclick = start;
+
+  const say = m => { status.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = mk("div", "padding:6px 12px;border-bottom:1px solid #0e3018");
+    const a = mk("a", "color:#5fe08a;text-decoration:none;font-weight:600;display:block", r.title);
+    a.href = r.url; a.target = "_blank"; row.appendChild(a);
+    row.appendChild(mk("div", "font-size:11px;opacity:.8", [r.company, r.location, r.salary].filter(x => x && x !== "—").join(" · ")));
+    list.appendChild(row); list.scrollTop = list.scrollHeight;
+  }
+
+  const tc = (el, sel) => { const n = el.querySelector(sel); return n ? (n.textContent || "").trim() : ""; };
+  const cards = () => [...document.querySelectorAll('[data-test="jobListing"]')];
+  function extractCard(card) {
+    const link = card.querySelector('[data-test="job-link"]') || card.querySelector('a[href]');
+    const url = link ? (new URL(link.href, location.origin)).href.split("?")[0] : "";
+    const title = tc(card, '[data-test="job-title"]');
+    // company: prefer the dedicated element; else the first text line before the title that isn't a rating
+    let company = tc(card, '[data-test="employer-short-name"]');
+    if (!company) {
+      const lines = card.innerText.split("\n").map(s => s.trim()).filter(Boolean);
+      for (const l of lines) { if (l === title) break; if (!/^\d+(\.\d+)?$/.test(l) && !/^(★|Easy Apply|Employer provided)/i.test(l)) { company = l; break; } }
+    }
+    return {
+      title,
+      company,
+      location: tc(card, '[data-test="emp-location"]'),
+      salary: tc(card, '[data-test="detailSalary"]').replace(/\s*\(.*\)$/, "") || "—",
+      url,
+    };
+  }
+  async function showMore() {
+    const before = cards().length;
+    const btn = [...document.querySelectorAll('button')].find(b => /show more jobs/i.test(b.innerText || ""));
+    if (!btn) return false;
+    btn.click();
+    for (let i = 0; i < 25; i++) { await delay(300); if (cards().length > before) return true; }
+    return false;
+  }
+
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const cfg = {
+      KEYWORDS: splitList($("gdf-keywords").value),
+      EXCLUDE:  splitList($("gdf-exclude").value),
+      MAX_CLICKS: Math.max(0, parseInt($("gdf-maxclicks").value) || 20),
+      STOP_AT:  Math.max(0, parseInt($("gdf-stop").value) || 0),
+      OPEN_TABS:$("gdf-opentabs").checked,
+      DELAY_MS: 1200,
+    };
+    form.style.display = "none"; status.style.display = "block";
+    await runSearch(cfg);
+  }
+
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    if (!cards().length) { say("⚠ No job cards. Open a Glassdoor jobs search, let it load, then Start."); return; }
+
+    say("Scanning Glassdoor results...");
+    const seen = new Set(), matches = [];
+    const harvest = () => {
+      for (const card of cards()) {
+        let j; try { j = extractCard(card); } catch { continue; }
+        if (!j.title || !j.url || seen.has(j.url)) continue;
+        seen.add(j.url);
+        const text = [j.title, j.company].join(" ");
+        if (kwRx && !kwRx.test(text)) continue;
+        if (exRx && exRx.test(text)) continue;
+        matches.push(j); addRow(j);
+        console.log(`✓ ${j.title} — ${j.company} — ${j.url}`);
+      }
+    };
+
+    harvest();
+    for (let c = 0; c < cfg.MAX_CLICKS; c++) {
+      say(`${cards().length} jobs loaded · ${matches.length} match(es) · click ${c + 1}...`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
+      const more = await showMore();
+      harvest();
+      if (!more) { say(`📄 No more jobs to load.`); break; }
+      await delay(cfg.DELAY_MS);
+    }
+    harvest();
+
+    if (!matches.length) { say("No matches found (broaden keywords / clear Exclude)."); return; }
+
+    console.table(matches.map(({ title, company, location, salary }) => ({ title, company, location, salary })));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Title,Company,Location,Salary,URL\n" +
+      matches.map(m => [q(m.title), q(m.company), q(m.location), q(m.salary), q(m.url)].join(",")).join("\n");
+    const a = mk("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "glassdoor-jobs.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(500); }
+  }
+})();

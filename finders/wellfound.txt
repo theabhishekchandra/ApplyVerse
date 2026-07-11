@@ -1,0 +1,200 @@
+/* ================================================================
+   Wellfound – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   Paste this whole file into the DevTools Console while you're on a
+   Wellfound jobs search (wellfound.com/jobs) with your role/filters
+   already set. A form panel appears — type your Keywords, Exclude
+   words and options, then click ▶ Start. No code editing needed.
+
+   HOW IT WORKS  (Wellfound differs from the others)
+   • Wellfound is a React app that groups jobs under startup blocks
+     and loads more via INFINITE SCROLL (no page numbers / Next btn).
+   • So the tool scrapes the jobs already rendered, auto-scrolls to
+     load more, and repeats until nothing new loads — all in one run.
+   • IMPORTANT: Wellfound shows EVERY job at a company that matches
+     your search — so a search for "Android Developer" also lists that
+     company's Frontend/Backend roles. Your KEYWORDS filter (matched
+     against the job TITLE) is what narrows it to the real roles.
+   • Each job row gives title, company, location, salary, equity and
+     posted date — we collect those, de-dupe, show live progress, and
+     download a CSV.
+
+   HOW TO USE
+   1. On wellfound.com/jobs set your role + location filters (their UI)
+      so the results you want are showing.
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Fill the form → ▶ Start. CSV lands in Downloads when done.
+
+   NOTES
+   • It scrolls the page while running (that's how it loads more) —
+     let it finish. Raise "Max scrolls" if you have many results.
+   • No full-JD scan (opening a job navigates away in the SPA); it
+     matches your keywords against the title + company + details line.
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const mk = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  function inputEl(id, val, ph) {
+    const e = document.createElement("input");
+    e.id = id; e.value = val || ""; e.placeholder = ph || "";
+    e.style.cssText = "width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #444;border-radius:6px;background:#1a1a1a;color:#fff;font-size:12px";
+    return e;
+  }
+  function fieldBlock(label, id, val, ph) {
+    const w = mk("div");
+    w.appendChild(mk("label", "display:block;margin:8px 0 3px;font-size:11px;opacity:.85", label));
+    w.appendChild(inputEl(id, val, ph));
+    return w;
+  }
+  function checkBlock(label, id, on) {
+    const l = mk("label", "display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer");
+    const c = document.createElement("input"); c.type = "checkbox"; c.id = id; c.checked = !!on;
+    l.appendChild(c); l.appendChild(document.createTextNode(" " + label));
+    return l;
+  }
+
+  // ---------------- build form panel ----------------
+  $("wf-panel")?.remove();
+  const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;"+
+    "background:#0d0d0d;color:#fff;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;"+
+    "border:1px solid #444;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden");
+  p.id = "wf-panel";
+
+  const header = mk("div", "padding:10px 12px;background:#1a1a1a;font-weight:600;display:flex;justify-content:space-between;align-items:center");
+  const brand = mk("span"); brand.appendChild(mk("span", "", "w")); brand.appendChild(mk("span", "color:#ff3d54", ": Job Finder"));
+  header.appendChild(brand);
+  const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
+
+  const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "wf-form";
+  form.appendChild(fieldBlock("Keywords (comma-sep — ANY match; blank = all)", "wf-keywords", "android, kotlin, jetpack, flutter, mobile", "android, kotlin"));
+  form.appendChild(fieldBlock("Exclude words (comma-sep — optional)", "wf-exclude", "", "senior, frontend, backend"));
+
+  const two = mk("div", "display:flex;gap:8px");
+  const c1 = mk("div", "flex:1"); c1.appendChild(fieldBlock("Max scrolls", "wf-maxscrolls", "40"));
+  const c2 = mk("div", "flex:1"); c2.appendChild(fieldBlock("Stop after N (0=all)", "wf-stop", "0"));
+  two.appendChild(c1); two.appendChild(c2); form.appendChild(two);
+
+  const opts = mk("div", "margin-top:8px;padding-top:6px;border-top:1px solid #444");
+  opts.appendChild(checkBlock("Remember seen jobs (only NEW next run)", "wf-remember", false));
+  opts.appendChild(checkBlock("Open each match in a new tab", "wf-opentabs", false));
+  form.appendChild(opts);
+
+  const startBtn = mk("button", "width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;background:#ff3d54;color:#fff;font-weight:700;font-size:13px;cursor:pointer", "▶ Start search");
+  startBtn.id = "wf-start"; form.appendChild(startBtn); p.appendChild(form);
+
+  const status = mk("div", "padding:8px 12px;border-top:1px solid #444;font-size:12px;display:none"); status.id = "wf-status";
+  const list = mk("div", "overflow:auto;padding:2px 0"); list.id = "wf-list";
+  p.appendChild(status); p.appendChild(list);
+
+  document.body.appendChild(p);
+  closeX.onclick = () => p.remove();
+  startBtn.onclick = start;
+
+  const say = m => { status.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = mk("div", "padding:6px 12px;border-bottom:1px solid #222");
+    const a = mk("a", "color:#ff8a97;text-decoration:none;font-weight:600;display:block", r.title);
+    a.href = r.url; a.target = "_blank"; row.appendChild(a);
+    row.appendChild(mk("div", "font-size:11px;opacity:.8", [r.company, r.location, r.salary].filter(x => x && x !== "—").join(" · ")));
+    list.appendChild(row); list.scrollTop = list.scrollHeight;
+  }
+
+  const jobLinks = () => [...document.querySelectorAll('a[href*="/jobs/"]')].filter(a => /\/jobs\/\d+/.test(a.getAttribute("href") || ""));
+
+  function extractJob(link) {
+    const url = (new URL(link.href, location.origin)).href.split("?")[0];
+    // the <a> wraps title + meta line(s); first line is the title, the rest is the details line
+    const linkLines = link.innerText.split("\n").map(s => s.trim()).filter(Boolean);
+    const title = linkLines[0] || "";
+    // drop status/action noise so only the location/salary/equity text remains
+    const noise = /RECRUITER|ACTIVELY HIRING|POSTED|^Save$|Learn more|Apply on|PROMOTED/i;
+    const meta = linkLines.slice(1).filter(l => !noise.test(l)).join(" ");
+    const block = link.closest('[data-test="StartupResult"]');
+    const company = block ? (block.innerText.split("\n").map(s => s.trim()).filter(Boolean)[0] || "") : "";
+    // posted date lives in the row, outside the <a>
+    let row = link;
+    for (let i = 0; i < 4; i++) { const par = row.parentElement; if (!par) break; row = par; if (/posted/i.test(row.innerText)) break; }
+    const posted = ((row.innerText.match(/POSTED[^\n]*/i) || [""])[0]).replace(/posted/i, "").trim();
+    const salary = (meta.match(/(?:₹|\$)[\d.,]+[LkK]?\s*[–-]\s*(?:₹|\$)?[\d.,]+[LkK]?/) || [""])[0];
+    const equity = (meta.match(/No equity|[\d.]+%[^•·]*/i) || [""])[0].trim();
+    const workmode = (meta.match(/In office|Remote only|Remote|Hybrid/i) || [""])[0];
+    const city = meta.replace(salary, "").replace(equity, "").replace(workmode, "").replace(/[•·]/g, " ").replace(/\s+/g, " ").trim();
+    const loc = [workmode, city].filter(Boolean).join(" · ");
+    return { title, company, location: loc, salary: salary || "—", equity: equity || "—", posted, url };
+  }
+
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const cfg = {
+      KEYWORDS: splitList($("wf-keywords").value),
+      EXCLUDE:  splitList($("wf-exclude").value),
+      MAX_SCROLLS: Math.max(1, parseInt($("wf-maxscrolls").value) || 40),
+      STOP_AT:  Math.max(0, parseInt($("wf-stop").value) || 0),
+      REMEMBER: $("wf-remember").checked,
+      OPEN_TABS:$("wf-opentabs").checked,
+    };
+    form.style.display = "none"; status.style.display = "block";
+    await runSearch(cfg);
+  }
+
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    const MEM_KEY = "wf_seen";
+    const memSeen = new Set(cfg.REMEMBER ? JSON.parse(localStorage.getItem(MEM_KEY) || "[]") : []);
+
+    // guard: nothing to scrape?
+    if (!jobLinks().length) {
+      await delay(1500);
+      if (!jobLinks().length) { say("⚠ No jobs found. Open wellfound.com/jobs, set your search, let results load, then Start."); return; }
+    }
+
+    say("Scanning Wellfound results...");
+    const seen = new Set(), matches = [];
+    let stable = 0;
+
+    const harvest = () => {
+      let hits = 0;
+      for (const link of jobLinks()) {
+        const j = extractJob(link);
+        if (!j.title || !j.url || seen.has(j.url)) continue;
+        const text = [j.title, j.company, j.location].join(" ");
+        const keep = (!kwRx || kwRx.test(text)) && !(exRx && exRx.test(text));
+        if (!keep) { seen.add(j.url); continue; }   // mark non-matches seen too, so we don't re-check
+        seen.add(j.url);
+        if (cfg.REMEMBER && memSeen.has(j.url)) continue;
+        matches.push(j); addRow(j); hits++;
+        console.log(`✓ ${j.title} — ${j.company} — ${j.url}`);
+      }
+      return hits;
+    };
+
+    for (let s = 0; s < cfg.MAX_SCROLLS && stable < 3; s++) {
+      harvest();
+      say(`scroll ${s + 1}: ${jobLinks().length} jobs loaded · ${matches.length} match(es)`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
+      const before = jobLinks().length;
+      window.scrollTo(0, document.body.scrollHeight);
+      await delay(2000);
+      stable = jobLinks().length > before ? 0 : stable + 1;
+    }
+    harvest();  // final pass
+
+    if (!matches.length) { say("No matches found (try broader keywords, or clear Exclude)."); return; }
+    if (cfg.REMEMBER) { matches.forEach(m => memSeen.add(m.url)); localStorage.setItem(MEM_KEY, JSON.stringify([...memSeen])); }
+
+    console.table(matches.map(({ title, company, location, salary, equity, posted }) => ({ title, company, location, salary, equity, posted })));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Title,Company,Location,Salary,Equity,Posted,URL\n" +
+      matches.map(m => [q(m.title), q(m.company), q(m.location), q(m.salary), q(m.equity), q(m.posted), q(m.url)].join(",")).join("\n");
+    const a = mk("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "wellfound-jobs.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(500); }
+  }
+})();

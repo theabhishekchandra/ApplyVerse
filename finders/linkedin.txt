@@ -1,0 +1,215 @@
+/* ================================================================
+   LinkedIn – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   Paste this whole file into the DevTools Console while you're on
+   any LinkedIn Jobs search page (linkedin.com/jobs/...). A form
+   panel appears — type your Profile, Location, Keywords, Exclude
+   words and options, then click ▶ Start. No code editing needed.
+
+   HOW IT WORKS
+   • Uses LinkedIn's public "guest" jobs API (server-rendered cards),
+     so it does NOT depend on LinkedIn's obfuscated page HTML and
+     does NOT scroll/navigate you around.
+   • Pulls jobs 10 at a time, page by page.
+   • Keeps jobs matching your KEYWORDS (title, or full description),
+     drops jobs matching your EXCLUDE words, de-dupes, shows live
+     progress, and downloads a CSV.
+   • Built entirely with createElement (LinkedIn enforces Trusted
+     Types, which blocks innerHTML — so we avoid it).
+
+   NOTES / LIMITS
+   • LinkedIn's guest API caps at roughly the first ~1000 results.
+   • It rate-limits aggressively — keep DELAY_MS sane (>=800). If you
+     start getting empty/blocked results, wait a few minutes & re-run.
+   • Full-JD scan makes 1 extra request per job (slower, but matches
+     jobs whose description mentions your keywords even if the title
+     doesn't).
+
+   HOW TO USE
+   1. Open a LinkedIn Jobs search (any role) so you're logged in.
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Fill the form → ▶ Start. CSV lands in Downloads when done.
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  // entity decoder that does NOT use innerHTML (Trusted-Types safe)
+  const decode = s => new DOMParser().parseFromString(s || "", "text/html").body.textContent.trim();
+
+  // DOM builders (no innerHTML anywhere)
+  const mk = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  function inputEl(id, val, ph) {
+    const e = document.createElement("input");
+    e.id = id; e.value = val || ""; e.placeholder = ph || "";
+    e.style.cssText = "width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #2a6f9e;border-radius:6px;background:#061a2b;color:#eaf4ff;font-size:12px";
+    return e;
+  }
+  function fieldBlock(label, id, val, ph) {
+    const w = mk("div");
+    w.appendChild(mk("label", "display:block;margin:8px 0 3px;font-size:11px;opacity:.85", label));
+    w.appendChild(inputEl(id, val, ph));
+    return w;
+  }
+  function checkBlock(label, id, on) {
+    const l = mk("label", "display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer");
+    const c = document.createElement("input"); c.type = "checkbox"; c.id = id; c.checked = !!on;
+    l.appendChild(c); l.appendChild(document.createTextNode(" " + label));
+    return l;
+  }
+
+  // read current search to pre-fill the form
+  const sp = new URLSearchParams(location.search);
+  const curKw  = sp.get("keywords") || "";
+  const curLoc = sp.get("location") || "India";
+
+  // ---------------- build the form panel ----------------
+  $("ljf-panel")?.remove();
+  const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;"+
+    "background:#08243b;color:#eaf4ff;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;"+
+    "border:1px solid #2a6f9e;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden");
+  p.id = "ljf-panel";
+
+  const header = mk("div", "padding:10px 12px;background:#0a4a72;font-weight:600;display:flex;justify-content:space-between;align-items:center");
+  header.appendChild(mk("span", "", "in  Job Finder"));
+  const closeX = mk("span", "cursor:pointer;opacity:.7", "✕");
+  header.appendChild(closeX);
+  p.appendChild(header);
+
+  const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "ljf-form";
+  form.appendChild(fieldBlock("Profile / search role", "ljf-profile", curKw, "e.g. Android Developer"));
+  form.appendChild(fieldBlock("Location", "ljf-location", curLoc, "e.g. India"));
+  form.appendChild(fieldBlock("Keywords (comma-sep — ANY match; blank = all)", "ljf-keywords", "android, kotlin, jetpack, flutter", "android, kotlin"));
+  form.appendChild(fieldBlock("Exclude words (comma-sep — optional)", "ljf-exclude", "", "senior, sales, intern"));
+
+  const two = mk("div", "display:flex;gap:8px");
+  const c1 = mk("div", "flex:1"); c1.appendChild(fieldBlock("Max jobs", "ljf-maxjobs", "300"));
+  const c2 = mk("div", "flex:1"); c2.appendChild(fieldBlock("Stop after N (0=all)", "ljf-stop", "0"));
+  two.appendChild(c1); two.appendChild(c2); form.appendChild(two);
+
+  const opts = mk("div", "margin-top:8px;padding-top:6px;border-top:1px solid #2a6f9e");
+  opts.appendChild(checkBlock("Scan FULL job description (slower, accurate)", "ljf-fulljd", false));
+  opts.appendChild(checkBlock("Remember seen jobs (only NEW next run)", "ljf-remember", false));
+  opts.appendChild(checkBlock("Open each match in a new tab", "ljf-opentabs", false));
+  form.appendChild(opts);
+
+  const startBtn = mk("button", "width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;background:#2f9bff;color:#00101f;font-weight:700;font-size:13px;cursor:pointer", "▶ Start search");
+  startBtn.id = "ljf-start";
+  form.appendChild(startBtn);
+  p.appendChild(form);
+
+  const status = mk("div", "padding:8px 12px;border-top:1px solid #2a6f9e;font-size:12px;display:none"); status.id = "ljf-status";
+  const list   = mk("div", "overflow:auto;padding:2px 0"); list.id = "ljf-list";
+  p.appendChild(status); p.appendChild(list);
+
+  document.body.appendChild(p);
+  closeX.onclick = () => p.remove();
+  startBtn.onclick = start;
+
+  const say = m => { status.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = mk("div", "padding:6px 12px;border-bottom:1px solid #0e3a5a");
+    const a = mk("a", "color:#7ec7ff;text-decoration:none;font-weight:600;display:block", r.title);
+    a.href = r.url; a.target = "_blank";
+    row.appendChild(a);
+    row.appendChild(mk("div", "font-size:11px;opacity:.8", r.company + (r.location ? " · " + r.location : "")));
+    list.appendChild(row); list.scrollTop = list.scrollHeight;
+  }
+
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const cfg = {
+      QUERY:    $("ljf-profile").value.trim(),
+      LOCATION: $("ljf-location").value.trim() || "India",
+      KEYWORDS: splitList($("ljf-keywords").value),
+      EXCLUDE:  splitList($("ljf-exclude").value),
+      MAX_JOBS: Math.max(10, parseInt($("ljf-maxjobs").value) || 300),
+      STOP_AT:  Math.max(0,  parseInt($("ljf-stop").value)   || 0),
+      FULL_JD:  $("ljf-fulljd").checked,
+      REMEMBER: $("ljf-remember").checked,
+      OPEN_TABS:$("ljf-opentabs").checked,
+      DELAY_MS: 900, JD_DELAY_MS: 500,
+    };
+    form.style.display = "none";
+    status.style.display = "block";
+    await runSearch(cfg);
+  }
+
+  // ---------------- crawl via LinkedIn guest API ----------------
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    const extra = new URLSearchParams();
+    ["f_TPR","f_E","f_WT","f_JT","geoId","f_C"].forEach(k => { const v = sp.get(k); if (v) extra.set(k, v); });
+    const apiBase = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search";
+
+    const MEM_KEY = "ljf_seen_" + (cfg.QUERY || "all");
+    const memSeen = new Set(cfg.REMEMBER ? JSON.parse(localStorage.getItem(MEM_KEY) || "[]") : []);
+
+    say(`Searching "${cfg.QUERY}" @ ${cfg.LOCATION}${cfg.FULL_JD ? " | full-JD" : ""}...`);
+    const seen = new Set(), matches = [];
+
+    for (let start = 0; start < cfg.MAX_JOBS; start += 10) {
+      const qs = new URLSearchParams({ keywords: cfg.QUERY, location: cfg.LOCATION, start });
+      for (const [k, v] of extra) qs.set(k, v);
+      let html;
+      try {
+        const res = await fetch(apiBase + "?" + qs.toString(), { credentials: "include" });
+        if (res.status !== 200) { say(`⚠ start ${start}: HTTP ${res.status} — stopping (rate-limit? try later).`); break; }
+        html = await res.text();
+      } catch (e) { say(`⚠ start ${start} failed — stopping.`); break; }
+
+      const chunks = html.split(/<li[\s>]/).slice(1);
+      if (!chunks.length) { say(`✅ Reached the end at ${start} jobs.`); break; }
+
+      let hits = 0;
+      for (const ch of chunks) {
+        const id = (ch.match(/jobs\/view\/[a-z0-9-]*?(\d{6,})/i) || [])[1];
+        if (!id || seen.has(id)) continue;
+        const title    = decode((ch.match(/base-search-card__title[^>]*>\s*([\s\S]*?)\s*<\//)  || [])[1] || "");
+        const company  = decode((ch.match(/base-search-card__subtitle[^>]*>[\s\S]*?>\s*([\s\S]*?)\s*<\//) || [])[1] || "");
+        const location = decode((ch.match(/job-search-card__location[^>]*>\s*([\s\S]*?)\s*<\//) || [])[1] || "");
+        const date     = (ch.match(/datetime="([^"]+)"/) || [])[1] || "";
+        const url      = "https://www.linkedin.com/jobs/view/" + id + "/";
+        if (!title) continue;
+
+        let text = title;
+        if (cfg.FULL_JD) {
+          try {
+            const dr = await fetch(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${id}`, { credentials: "include" });
+            if (dr.status === 200) text = await dr.text();
+            await delay(cfg.JD_DELAY_MS);
+          } catch {}
+        }
+
+        const keep = (!kwRx || kwRx.test(text)) && !(exRx && exRx.test(text));
+        if (!keep) continue;
+        seen.add(id);
+        if (cfg.REMEMBER && memSeen.has(id)) continue;
+        const rec = { title, company, location, date, url };
+        matches.push(rec); addRow(rec); hits++;
+        console.log(`✓ ${title} — ${company} — ${url}`);
+      }
+      say(`fetched ~${start + chunks.length} jobs · ${matches.length} match(es) so far...`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
+      await delay(cfg.DELAY_MS);
+    }
+
+    if (!matches.length) { say("No matches found."); return; }
+    if (cfg.REMEMBER) {
+      matches.forEach(m => memSeen.add((m.url.match(/(\d{6,})/) || [])[1]));
+      localStorage.setItem(MEM_KEY, JSON.stringify([...memSeen]));
+    }
+
+    console.table(matches.map(({ title, company, location, date }) => ({ title, company, location, date })));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Title,Company,Location,Date,URL\n" +
+      matches.map(m => [q(m.title), q(m.company), q(m.location), q(m.date), q(m.url)].join(",")).join("\n");
+    const a = mk("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `linkedin-jobs-${(cfg.QUERY || "search").replace(/\W+/g, "_").toLowerCase()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(500); }
+  }
+})();

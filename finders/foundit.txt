@@ -1,0 +1,148 @@
+/* ================================================================
+   foundit (Monster) – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   Paste into the DevTools Console while on foundit.in. A form appears
+   — set Profile / Keywords / Exclude, click ▶ Start. CSV downloads.
+
+   HOW IT WORKS
+   • foundit has a clean JSON search API (middleware/jobsearch) that
+     uses your session — no CAPTCHA. The tool queries it with your
+     Profile, pages via `start`, and collects title, company, location,
+     experience, salary, skills and the job URL.
+   • "Keywords" further narrows client-side by title + skills.
+
+   HOW TO USE
+   1. Be on foundit.in (logged in helps).
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Set Profile (e.g. android developer) → ▶ Start.
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const mk = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  function inputEl(id, val, ph) { const e = document.createElement("input"); e.id = id; e.value = val || ""; e.placeholder = ph || ""; e.style.cssText = "width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #7b3ff2;border-radius:6px;background:#16112b;color:#efeaff;font-size:12px"; return e; }
+  function fieldBlock(label, id, val, ph) { const w = mk("div"); w.appendChild(mk("label", "display:block;margin:8px 0 3px;font-size:11px;opacity:.85", label)); w.appendChild(inputEl(id, val, ph)); return w; }
+  function checkBlock(label, id, on) { const l = mk("label", "display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer"); const c = document.createElement("input"); c.type = "checkbox"; c.id = id; c.checked = !!on; l.appendChild(c); l.appendChild(document.createTextNode(" " + label)); return l; }
+
+  const roleMatch = location.pathname.match(/\/search\/(.+?)-jobs/);
+  const curRole = roleMatch ? roleMatch[1].replace(/-/g, " ") : "android developer";
+
+  $("fdf-panel")?.remove();
+  const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#0f0b22;color:#efeaff;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #7b3ff2;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
+  p.id = "fdf-panel";
+  const header = mk("div", "padding:10px 12px;background:#5a27b5;font-weight:600;display:flex;justify-content:space-between;align-items:center");
+  header.appendChild(mk("span", "", "◆ foundit Job Finder"));
+  const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
+
+  const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "fdf-form";
+  form.appendChild(fieldBlock("Profile / search role", "fdf-q", curRole, "e.g. android developer"));
+  form.appendChild(fieldBlock("Keywords (extra title/skill filter; blank = all)", "fdf-keywords", "", "android, kotlin, flutter"));
+  form.appendChild(fieldBlock("Exclude words (comma-sep — optional)", "fdf-exclude", "", "senior, sales"));
+  const two = mk("div", "display:flex;gap:8px");
+  const c1 = mk("div", "flex:1"); c1.appendChild(fieldBlock("Max jobs", "fdf-maxjobs", "300"));
+  const c2 = mk("div", "flex:1"); c2.appendChild(fieldBlock("Stop after N (0=all)", "fdf-stop", "0"));
+  two.appendChild(c1); two.appendChild(c2); form.appendChild(two);
+  const opts = mk("div", "margin-top:8px;padding-top:6px;border-top:1px solid #7b3ff2");
+  opts.appendChild(checkBlock("Open each match in a new tab", "fdf-opentabs", false));
+  form.appendChild(opts);
+  const startBtn = mk("button", "width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;background:#7b3ff2;color:#fff;font-weight:700;font-size:13px;cursor:pointer", "▶ Start search");
+  startBtn.id = "fdf-start"; form.appendChild(startBtn); p.appendChild(form);
+  const status = mk("div", "padding:8px 12px;border-top:1px solid #7b3ff2;font-size:12px;display:none"); status.id = "fdf-status";
+  const list = mk("div", "overflow:auto;padding:2px 0"); list.id = "fdf-list";
+  p.appendChild(status); p.appendChild(list);
+  document.body.appendChild(p);
+  closeX.onclick = () => p.remove();
+  startBtn.onclick = start;
+
+  const say = m => { status.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = mk("div", "padding:6px 12px;border-bottom:1px solid #201a3a");
+    const a = mk("a", "color:#b79bff;text-decoration:none;font-weight:600;display:block", r.title);
+    a.href = r.url; a.target = "_blank"; row.appendChild(a);
+    row.appendChild(mk("div", "font-size:11px;opacity:.8", [r.company, r.location, r.exp].filter(Boolean).join(" · ")));
+    list.appendChild(row); list.scrollTop = list.scrollHeight;
+  }
+
+  const expYrs = e => (e && typeof e === "object") ? e.years : e;
+  function extractJob(j) {
+    const rel = j.redirectUrl || j.seoJdUrl || j.jobUrl || "";
+    const url = rel ? (rel.startsWith("http") ? rel : "https://www.foundit.in" + rel) : "";
+    const skills = Array.isArray(j.skills) ? j.skills.join(", ") : (j.skills || "");
+    const mn = expYrs(j.minimumExperience), mx = expYrs(j.maximumExperience);
+    const exp = (mn != null && mx != null) ? `${mn}-${mx} yrs` : "";
+    const sv = j.maximumSalary?.absoluteValue || j.minimumSalary?.absoluteValue || 0;
+    const salary = sv > 0 ? `${(j.minimumSalary?.absoluteValue || 0)} - ${sv} ${j.maximumSalary?.currency || ""}`.trim() : "—";
+    return {
+      title: j.title || "",
+      company: j.companyName || j.company || "",
+      location: Array.isArray(j.locations) ? j.locations.join(", ") : (j.locations || j.location || ""),
+      exp, salary, skills,
+      url,
+    };
+  }
+
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const cfg = {
+      Q:        $("fdf-q").value.trim(),
+      KEYWORDS: splitList($("fdf-keywords").value),
+      EXCLUDE:  splitList($("fdf-exclude").value),
+      MAX_JOBS: Math.max(20, parseInt($("fdf-maxjobs").value) || 300),
+      STOP_AT:  Math.max(0, parseInt($("fdf-stop").value) || 0),
+      OPEN_TABS:$("fdf-opentabs").checked,
+      DELAY_MS: 600,
+    };
+    form.style.display = "none"; status.style.display = "block";
+    await runSearch(cfg);
+  }
+
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    const base = "https://www.foundit.in/middleware/jobsearch?sort=1&limit=20&query=" + encodeURIComponent(cfg.Q);
+
+    say(`Searching foundit for "${cfg.Q}"...`);
+    const seen = new Set(), matches = [];
+
+    for (let start = 0; start < cfg.MAX_JOBS; start += 20) {
+      let arr;
+      try {
+        const r = await fetch(base + "&start=" + start, { credentials: "include", headers: { Accept: "application/json" } });
+        if (r.status !== 200) { say(`⚠ HTTP ${r.status} at ${start} — stopping.`); break; }
+        const d = await r.json();
+        arr = d.jobSearchResponse?.data || [];
+      } catch (e) { say(`⚠ request failed — stopping.`); break; }
+
+      if (!arr.length) { say(`✅ Reached the end (${matches.length} kept).`); break; }
+
+      for (const jo of arr) {
+        let j; try { j = extractJob(jo); } catch { continue; }
+        if (!j.url || seen.has(j.url)) continue;
+        seen.add(j.url);
+        const text = [j.title, j.skills, j.company].join(" ");
+        if (kwRx && !kwRx.test(text)) continue;
+        if (exRx && exRx.test(text)) continue;
+        matches.push(j); addRow(j);
+        console.log(`✓ ${j.title} — ${j.company} — ${j.url}`);
+      }
+      say(`fetched ${start + arr.length} · ${matches.length} match(es)`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
+      await delay(cfg.DELAY_MS);
+    }
+
+    if (!matches.length) { say("No matches found (try a different Profile / clear Keywords)."); return; }
+
+    console.table(matches.map(({ title, company, location, exp, salary }) => ({ title, company, location, exp, salary })));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Title,Company,Location,Experience,Salary,Skills,URL\n" +
+      matches.map(m => [q(m.title), q(m.company), q(m.location), q(m.exp), q(m.salary), q(m.skills), q(m.url)].join(",")).join("\n");
+    const a = mk("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `foundit-jobs-${(cfg.Q || "search").replace(/\W+/g, "_").toLowerCase()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(500); }
+  }
+})();

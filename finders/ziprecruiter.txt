@@ -1,0 +1,172 @@
+/* ================================================================
+   ZipRecruiter – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   Paste this whole file into the DevTools Console on any
+   ZipRecruiter search page. A form panel appears — type your
+   Profile, Keywords, Exclude words and options right there, then
+   click ▶ Start. No code editing needed.
+
+   • Crawls the results page by page.
+   • Keeps jobs matching your KEYWORDS (title/snippet, or full JD).
+   • Drops jobs matching your EXCLUDE words.
+   • Shows live progress + clickable matches, and downloads a CSV.
+
+   HOW TO USE
+   1. Open a ZipRecruiter search (any role).
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Fill the form → ▶ Start. CSV lands in Downloads when done.
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escHtml = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const curQ = new URLSearchParams(location.search).get("q") || "";
+
+  // ---------------- build the form panel ----------------
+  $("zjf-panel")?.remove();
+  const p = document.createElement("div");
+  p.id = "zjf-panel";
+  p.style.cssText = "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;"+
+    "background:#0e2a24;color:#eafff6;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;"+
+    "border:1px solid #1f6f5c;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden";
+
+  const field = (label, id, val, ph="") =>
+    `<label style="display:block;margin:8px 0 3px;font-size:11px;opacity:.85">${label}</label>
+     <input id="${id}" value="${escHtml(val)}" placeholder="${escHtml(ph)}"
+       style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #1f6f5c;border-radius:6px;background:#0a201b;color:#eafff6;font-size:12px">`;
+  const check = (label, id, on) =>
+    `<label style="display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer">
+       <input type="checkbox" id="${id}" ${on?"checked":""}> ${label}</label>`;
+
+  p.innerHTML =
+    '<div style="padding:10px 12px;background:#12463a;font-weight:600;display:flex;justify-content:space-between;align-items:center">'+
+      '<span>🔎 Job Finder</span><span id="zjf-x" style="cursor:pointer;opacity:.7">✕</span></div>'+
+    '<div id="zjf-form" style="padding:10px 12px;overflow:auto">'+
+      field("Profile / search role", "zjf-profile", curQ, "e.g. Android Developer")+
+      field("Keywords (comma-sep — ANY match; blank = all)", "zjf-keywords", "android, kotlin, jetpack, flutter", "android, kotlin")+
+      field("Exclude words (comma-sep — optional)", "zjf-exclude", "", "senior, sales, intern")+
+      '<div style="display:flex;gap:8px">'+
+        '<div style="flex:1">'+field("Max pages", "zjf-maxpages", "500")+'</div>'+
+        '<div style="flex:1">'+field("Stop after N (0=all)", "zjf-stop", "0")+'</div>'+
+      '</div>'+
+      '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #1f6f5c">'+
+        check("Scan FULL job description (slower, accurate)", "zjf-fulljd", false)+
+        check("Relevance mode (more real hits)", "zjf-relevance", false)+
+        check("Remember seen jobs (only NEW next run)", "zjf-remember", false)+
+        check("Open each match in a new tab", "zjf-opentabs", false)+
+      '</div>'+
+      '<button id="zjf-start" style="width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;'+
+        'background:#1db98a;color:#04120e;font-weight:700;font-size:13px;cursor:pointer">▶ Start search</button>'+
+    '</div>'+
+    '<div id="zjf-status" style="padding:8px 12px;border-top:1px solid #1f6f5c;font-size:12px;display:none"></div>'+
+    '<div id="zjf-list" style="overflow:auto;padding:2px 0"></div>';
+
+  document.body.appendChild(p);
+  $("zjf-x").onclick = () => p.remove();
+  $("zjf-start").onclick = start;
+
+  // ---------------- read form + run ----------------
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const cfg = {
+      QUERY:     $("zjf-profile").value.trim(),
+      KEYWORDS:  splitList($("zjf-keywords").value),
+      EXCLUDE:   splitList($("zjf-exclude").value),
+      MAX_PAGES: Math.max(1, parseInt($("zjf-maxpages").value) || 500),
+      STOP_AT:   Math.max(0, parseInt($("zjf-stop").value) || 0),
+      FULL_JD:   $("zjf-fulljd").checked,
+      RELEVANCE: $("zjf-relevance").checked,
+      REMEMBER:  $("zjf-remember").checked,
+      OPEN_TABS: $("zjf-opentabs").checked,
+      DELAY_MS:  700, JD_DELAY_MS: 350,
+    };
+    $("zjf-form").style.display = "none";     // collapse form, show progress
+    $("zjf-status").style.display = "block";
+    await runSearch(cfg);
+  }
+
+  const statusEl = () => $("zjf-status");
+  const say = m => { const s = statusEl(); if (s) s.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = document.createElement("div");
+    row.style.cssText = "padding:6px 12px;border-bottom:1px solid #163f34";
+    row.innerHTML = `<a href="${r.url}" target="_blank" style="color:#7ee7c7;text-decoration:none;font-weight:600">${escHtml(r.title)}</a>`+
+      `<div style="font-size:11px;opacity:.8">${escHtml(r.company)} · ${escHtml(r.location||"")}</div>`;
+    $("zjf-list").appendChild(row);
+    $("zjf-list").scrollTop = $("zjf-list").scrollHeight;
+  }
+
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    const base = location.origin + "/jobs/search";
+    const params = new URLSearchParams(location.search);
+    if (cfg.QUERY) params.set("q", cfg.QUERY);
+    if (cfg.RELEVANCE) params.delete("sort");
+
+    const MEM_KEY = "zjf_seen_" + (params.get("q") || "all");
+    const memSeen = new Set(cfg.REMEMBER ? JSON.parse(localStorage.getItem(MEM_KEY) || "[]") : []);
+
+    say(`🔎 "${params.get("q")}" | keywords: [${cfg.KEYWORDS.join(", ") || "ANY"}]${cfg.FULL_JD ? " | full-JD" : ""}`);
+    const seen = new Set(), matches = [];
+
+    for (let page = 1; page <= cfg.MAX_PAGES; page++) {
+      params.set("page", page);
+      let doc;
+      try {
+        const res = await fetch(base + "?" + params.toString(), { credentials: "include" });
+        doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      } catch (e) { say(`⚠ page ${page} failed — stopping.`); break; }
+
+      const cards = [...doc.querySelectorAll("li.job-listing")];
+      if (!cards.length) { say(`📄 Page ${page}: no jobs — last page reached.`); break; }
+
+      let hits = 0;
+      for (const card of cards) {
+        const t = card.querySelector("a.jobList-title, a.job-link"); if (!t) continue;
+        const title = (t.innerText || "").trim(), url = t.href;
+        const meta = [...card.querySelectorAll("ul.jobList-introMeta li")].map(li => li.innerText.trim());
+        const company = meta[0] || "", location = meta[1] || "";
+        const date = (card.querySelector(".jobList-date")?.innerText || "").trim();
+        const snippet = (card.querySelector(".jobList-description")?.innerText || card.innerText || "").trim();
+
+        let text = title + "\n" + snippet;
+        if (cfg.FULL_JD) {
+          try {
+            const jr = await fetch(url, { credentials: "include" });
+            const jd = new DOMParser().parseFromString(await jr.text(), "text/html");
+            text = jd.querySelector("main")?.innerText || jd.body.innerText || text;
+            await delay(cfg.JD_DELAY_MS);
+          } catch {}
+        }
+
+        const keep = (!kwRx || kwRx.test(text)) && !(exRx && exRx.test(text));
+        if (!keep || seen.has(url) || (cfg.REMEMBER && memSeen.has(url))) continue;
+        seen.add(url);
+        const salary = (text.match(/(?:₹|Rs\.?|INR)\s?[\d,]+(?:\s?-\s?[\d,]+)?|[\d.]+\s?LPA/i) || ["—"])[0];
+        const rec = { page, title, company, location, date, salary, url };
+        matches.push(rec); addRow(rec); hits++;
+        console.log(`✓ [p${page}] ${title} — ${company} — ${url}`);
+      }
+      say(`page ${page}: ${cards.length} jobs, ${hits} match. Total: ${matches.length}`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
+      await delay(cfg.DELAY_MS);
+    }
+
+    if (!matches.length) { say("No matches found."); return; }
+    if (cfg.REMEMBER) { matches.forEach(m => memSeen.add(m.url)); localStorage.setItem(MEM_KEY, JSON.stringify([...memSeen])); }
+
+    console.table(matches.map(({page,title,company,location,date,salary}) => ({page,title,company,location,date,salary})));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Page,Title,Company,Location,Date,Salary,URL\n" +
+      matches.map(m => [m.page, q(m.title), q(m.company), q(m.location), q(m.date), q(m.salary), q(m.url)].join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `jobs-${(params.get("q")||"search").replace(/\W+/g,"_").toLowerCase()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(400); }
+  }
+})();

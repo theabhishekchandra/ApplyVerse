@@ -1,0 +1,137 @@
+/* ================================================================
+   Cutshort – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   Paste into the DevTools Console on a Cutshort category page, e.g.
+   cutshort.io/jobs/android-developer-jobs. A form appears — set your
+   Keywords / Exclude, click ▶ Start. CSV downloads when done.
+
+   HOW IT WORKS
+   • Cutshort category pages are server-rendered and list ALL (~50)
+     matching jobs on a SINGLE page (no pagination) — so the tool just
+     scrapes the page you're on. Fast, no scrolling, no API.
+   • Each card gives title, company, location, experience, salary and
+     skill tags. Keywords are matched against title + skills + company.
+   • Change "Profile" to jump to a different role's category page
+     (a reload — re-paste & Start there).
+
+   HOW TO USE
+   1. Open cutshort.io/jobs/<role>-jobs  (e.g. android-developer-jobs).
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Fill the form → ▶ Start.
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const slugify = s => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const mk = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  function inputEl(id, val, ph) { const e = document.createElement("input"); e.id = id; e.value = val || ""; e.placeholder = ph || ""; e.style.cssText = "width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #6C5CE7;border-radius:6px;background:#17123a;color:#eee;font-size:12px"; return e; }
+  function fieldBlock(label, id, val, ph) { const w = mk("div"); w.appendChild(mk("label", "display:block;margin:8px 0 3px;font-size:11px;opacity:.85", label)); w.appendChild(inputEl(id, val, ph)); return w; }
+  function checkBlock(label, id, on) { const l = mk("label", "display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer"); const c = document.createElement("input"); c.type = "checkbox"; c.id = id; c.checked = !!on; l.appendChild(c); l.appendChild(document.createTextNode(" " + label)); return l; }
+
+  const roleMatch = location.pathname.match(/\/jobs\/(.+?)-jobs/);
+  const curRole = roleMatch ? roleMatch[1].replace(/-/g, " ") : "";
+
+  $("csf-panel")?.remove();
+  const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#0f0b2e;color:#eee;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #6C5CE7;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
+  p.id = "csf-panel";
+  const header = mk("div", "padding:10px 12px;background:#3a2f8f;font-weight:600;display:flex;justify-content:space-between;align-items:center");
+  header.appendChild(mk("span", "", "✂ Cutshort Job Finder"));
+  const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
+
+  const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "csf-form";
+  form.appendChild(fieldBlock("Profile / role (change = go to that page)", "csf-profile", curRole, "e.g. android developer"));
+  form.appendChild(fieldBlock("Keywords (comma-sep — ANY match; blank = all)", "csf-keywords", "android, kotlin, jetpack, flutter", "android, kotlin"));
+  form.appendChild(fieldBlock("Exclude words (comma-sep — optional)", "csf-exclude", "", "senior, react"));
+  form.appendChild(fieldBlock("Stop after N (0 = all)", "csf-stop", "0"));
+  const opts = mk("div", "margin-top:8px;padding-top:6px;border-top:1px solid #6C5CE7");
+  opts.appendChild(checkBlock("Open each match in a new tab", "csf-opentabs", false));
+  form.appendChild(opts);
+  const startBtn = mk("button", "width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;background:#6C5CE7;color:#fff;font-weight:700;font-size:13px;cursor:pointer", "▶ Start search");
+  startBtn.id = "csf-start"; form.appendChild(startBtn); p.appendChild(form);
+  const status = mk("div", "padding:8px 12px;border-top:1px solid #6C5CE7;font-size:12px;display:none"); status.id = "csf-status";
+  const list = mk("div", "overflow:auto;padding:2px 0"); list.id = "csf-list";
+  p.appendChild(status); p.appendChild(list);
+  document.body.appendChild(p);
+  closeX.onclick = () => p.remove();
+  startBtn.onclick = start;
+
+  const say = m => { status.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = mk("div", "padding:6px 12px;border-bottom:1px solid #241d52");
+    const a = mk("a", "color:#b3a7ff;text-decoration:none;font-weight:600;display:block", r.title);
+    a.href = r.url; a.target = "_blank"; row.appendChild(a);
+    row.appendChild(mk("div", "font-size:11px;opacity:.8", [r.company, r.location, r.salary].filter(x => x && x !== "—").join(" · ")));
+    list.appendChild(row); list.scrollTop = list.scrollHeight;
+  }
+
+  const jobLinks = () => [...document.querySelectorAll('a[href*="/job/"]')].filter(a => /cutshort\.io\/job\//.test(a.href));
+
+  function extractJob(link) {
+    const url = link.href.split("?")[0];
+    let card = link;
+    for (let i = 0; i < 6; i++) { const par = card.parentElement; if (!par) break; card = par; if (/yrs|\/\s*yr|₹|Remote|office|Hybrid/i.test(card.innerText) && card.innerText.length < 900) break; }
+    const lines = card.innerText.split("\n").map(s => s.trim()).filter(Boolean);
+    const title = (link.querySelector("h2")?.innerText || lines[0] || "").trim();
+    const company = (lines.find(l => /^at\s+/i.test(l)) || "").replace(/^at\s+/i, "").trim();
+    const exp = (lines.find(l => /\d+\s*-\s*\d+\s*yrs?/i.test(l)) || "").trim();
+    const salary = (lines.find(l => /₹|\/\s*yr|\$/i.test(l)) || "—").trim();
+    const locn = (lines.find(l => /Remote|In office|Hybrid/i.test(l)) || "").trim();
+    const salIdx = lines.findIndex(l => l === salary);
+    const noise = /^(Apply now|\+\d+ more|Posted by|at\s|Remote|In office|Hybrid|₹|\d+\s*-\s*\d+\s*yrs)/i;
+    const skills = lines.slice(salIdx + 1).filter(l => !noise.test(l) && l.length < 30).slice(0, 8).join(", ");
+    return { title, company, exp, salary, location: locn, skills, url };
+  }
+
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const profile = $("csf-profile").value.trim();
+    if (profile && slugify(profile) !== slugify(curRole)) {
+      say(`↪ Switching to "${profile}" — reloads; re-paste & Start.`);
+      await delay(1000);
+      location.href = "https://cutshort.io/jobs/" + slugify(profile) + "-jobs";
+      return;
+    }
+    const cfg = {
+      KEYWORDS: splitList($("csf-keywords").value),
+      EXCLUDE:  splitList($("csf-exclude").value),
+      STOP_AT:  Math.max(0, parseInt($("csf-stop").value) || 0),
+      OPEN_TABS:$("csf-opentabs").checked,
+    };
+    form.style.display = "none"; status.style.display = "block";
+    await runSearch(cfg);
+  }
+
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    const links = jobLinks();
+    if (!links.length) { say("⚠ No jobs found. Open a cutshort.io/jobs/<role>-jobs page and let it load, then Start."); return; }
+    say(`Scanning ${links.length} jobs...`);
+    const seen = new Set(), matches = [];
+    for (const link of links) {
+      let j; try { j = extractJob(link); } catch { continue; }
+      if (!j.title || !j.url || seen.has(j.url)) continue;
+      seen.add(j.url);
+      const text = [j.title, j.skills, j.company].join(" ");
+      if (kwRx && !kwRx.test(text)) continue;
+      if (exRx && exRx.test(text)) continue;
+      matches.push(j); addRow(j);
+      console.log(`✓ ${j.title} — ${j.company} — ${j.url}`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) break;
+    }
+    if (!matches.length) { say("No matches found (try broader keywords)."); return; }
+
+    console.table(matches.map(({ title, company, location, exp, salary }) => ({ title, company, location, exp, salary })));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Title,Company,Location,Experience,Salary,Skills,URL\n" +
+      matches.map(m => [q(m.title), q(m.company), q(m.location), q(m.exp), q(m.salary), q(m.skills), q(m.url)].join(",")).join("\n");
+    const a = mk("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `cutshort-jobs-${slugify(curRole || "search")}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(500); }
+  }
+})();

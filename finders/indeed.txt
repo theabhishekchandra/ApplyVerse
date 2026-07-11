@@ -1,0 +1,161 @@
+/* ================================================================
+   Indeed – Universal Job Finder  (interactive form)
+   ----------------------------------------------------------------
+   Paste into the DevTools Console on an Indeed results page, e.g.
+   in.indeed.com/jobs?q=android+developer&l=India. A form appears —
+   set Profile / Location / Keywords, click ▶ Start. CSV downloads.
+
+   HOW IT WORKS
+   • Indeed results are server-rendered; the tool fetches each page in
+     the background (&start=0,10,20,…) and parses the cards. It reads
+     your Profile + Location from the form, so you don't navigate.
+   • Fields: title, company, location, salary, snippet, job URL.
+
+   ⚠ IMPORTANT — Indeed anti-bot
+   • Indeed aggressively rate-limits and may show a CAPTCHA / "verify
+     you are human" page after several quick requests. If the tool
+     reports it was blocked, STOP, solve the CAPTCHA in the tab
+     manually, wait a few minutes, and re-run with a smaller Max pages
+     and a higher delay. This tool will NOT bypass CAPTCHAs.
+   • Keep Max pages modest (e.g. 5-10) and DELAY high to stay under
+     the radar.
+
+   HOW TO USE
+   1. Open in.indeed.com/jobs?q=<role>&l=<place> (be logged in helps).
+   2. Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J) → paste → Enter.
+   3. Fill the form → ▶ Start.
+   ================================================================ */
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const mk = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  function inputEl(id, val, ph) { const e = document.createElement("input"); e.id = id; e.value = val || ""; e.placeholder = ph || ""; e.style.cssText = "width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #2557a7;border-radius:6px;background:#0b1426;color:#eaf0ff;font-size:12px"; return e; }
+  function fieldBlock(label, id, val, ph) { const w = mk("div"); w.appendChild(mk("label", "display:block;margin:8px 0 3px;font-size:11px;opacity:.85", label)); w.appendChild(inputEl(id, val, ph)); return w; }
+  function checkBlock(label, id, on) { const l = mk("label", "display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;cursor:pointer"); const c = document.createElement("input"); c.type = "checkbox"; c.id = id; c.checked = !!on; l.appendChild(c); l.appendChild(document.createTextNode(" " + label)); return l; }
+
+  const sp = new URLSearchParams(location.search);
+  const curQ = sp.get("q") || "", curL = sp.get("l") || "India";
+  const origin = location.origin;   // e.g. https://in.indeed.com
+
+  $("idf-panel")?.remove();
+  const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#07101f;color:#eaf0ff;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #2557a7;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
+  p.id = "idf-panel";
+  const header = mk("div", "padding:10px 12px;background:#2557a7;font-weight:600;display:flex;justify-content:space-between;align-items:center");
+  header.appendChild(mk("span", "", "indeed  Job Finder"));
+  const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
+
+  const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "idf-form";
+  form.appendChild(fieldBlock("Profile / search role", "idf-q", curQ, "e.g. android developer"));
+  form.appendChild(fieldBlock("Location", "idf-l", curL, "e.g. India"));
+  form.appendChild(fieldBlock("Keywords (extra filter; blank = all)", "idf-keywords", "", "android, kotlin, flutter"));
+  form.appendChild(fieldBlock("Exclude words (comma-sep — optional)", "idf-exclude", "", "senior, sales"));
+  const two = mk("div", "display:flex;gap:8px");
+  const c1 = mk("div", "flex:1"); c1.appendChild(fieldBlock("Max pages", "idf-maxpages", "8"));
+  const c2 = mk("div", "flex:1"); c2.appendChild(fieldBlock("Stop after N (0=all)", "idf-stop", "0"));
+  two.appendChild(c1); two.appendChild(c2); form.appendChild(two);
+  const opts = mk("div", "margin-top:8px;padding-top:6px;border-top:1px solid #2557a7");
+  opts.appendChild(checkBlock("Open each match in a new tab", "idf-opentabs", false));
+  form.appendChild(opts);
+  const startBtn = mk("button", "width:100%;margin-top:12px;padding:9px;border:0;border-radius:7px;background:#2557a7;color:#fff;font-weight:700;font-size:13px;cursor:pointer", "▶ Start search");
+  startBtn.id = "idf-start"; form.appendChild(startBtn); p.appendChild(form);
+  const status = mk("div", "padding:8px 12px;border-top:1px solid #2557a7;font-size:12px;display:none"); status.id = "idf-status";
+  const list = mk("div", "overflow:auto;padding:2px 0"); list.id = "idf-list";
+  p.appendChild(status); p.appendChild(list);
+  document.body.appendChild(p);
+  closeX.onclick = () => p.remove();
+  startBtn.onclick = start;
+
+  const say = m => { status.textContent = m; console.log(m); };
+  function addRow(r) {
+    const row = mk("div", "padding:6px 12px;border-bottom:1px solid #12203a");
+    const a = mk("a", "color:#7fa8e6;text-decoration:none;font-weight:600;display:block", r.title);
+    a.href = r.url; a.target = "_blank"; row.appendChild(a);
+    row.appendChild(mk("div", "font-size:11px;opacity:.8", [r.company, r.location, r.salary].filter(x => x && x !== "—").join(" · ")));
+    list.appendChild(row); list.scrollTop = list.scrollHeight;
+  }
+
+  const tc = (el, sel) => { const n = el.querySelector(sel); return n ? (n.textContent || "").trim() : ""; };
+  function extractCard(card) {
+    const jk = card.querySelector('[data-jk]')?.getAttribute("data-jk") || card.getAttribute("data-jk") || "";
+    const title = tc(card, '.jobTitle span[title]') || tc(card, '.jobTitle');
+    const company = tc(card, '[data-testid="company-name"]');
+    const location = tc(card, '[data-testid="text-location"]');
+    const snippet = tc(card, '.job-snippet, [class*="snippet"]');
+    const salRaw = (tc(card, '[data-testid="attribute_snippet_testid"]') + " " + tc(card, '[class*="salary"]'));
+    const salary = (salRaw.match(/₹\s?[\d,]+(?:\s*[-–]\s*₹?\s?[\d,]+)?\s*(?:a year|a month|an hour|per year|per month)?/i) || ["—"])[0].trim();
+    const url = jk ? origin + "/viewjob?jk=" + jk : "";
+    return { title, company, location, salary: salary || "—", snippet, url, jk };
+  }
+
+  async function start() {
+    const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    const cfg = {
+      Q:        $("idf-q").value.trim(),
+      L:        $("idf-l").value.trim(),
+      KEYWORDS: splitList($("idf-keywords").value),
+      EXCLUDE:  splitList($("idf-exclude").value),
+      MAX_PAGES:Math.max(1, parseInt($("idf-maxpages").value) || 8),
+      STOP_AT:  Math.max(0, parseInt($("idf-stop").value) || 0),
+      OPEN_TABS:$("idf-opentabs").checked,
+      DELAY_MS: 1500,
+    };
+    form.style.display = "none"; status.style.display = "block";
+    await runSearch(cfg);
+  }
+
+  async function runSearch(cfg) {
+    const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
+    const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
+    const base = origin + "/jobs?q=" + encodeURIComponent(cfg.Q) + "&l=" + encodeURIComponent(cfg.L);
+
+    say(`Searching Indeed for "${cfg.Q}" @ ${cfg.L}...`);
+    const seen = new Set(), matches = [];
+
+    for (let page = 0; page < cfg.MAX_PAGES; page++) {
+      let html;
+      try {
+        const r = await fetch(base + "&start=" + (page * 10), { credentials: "include" });
+        html = await r.text();
+        if (r.status !== 200) { say(`⚠ page ${page + 1}: HTTP ${r.status} — stopping.`); break; }
+      } catch (e) { say(`⚠ page ${page + 1} failed — stopping.`); break; }
+
+      if (/captcha|verify you are human|unusual traffic|hcaptcha|recaptcha/i.test(html)) {
+        say("🛑 Indeed showed a CAPTCHA/verification page — stopping. Solve it in the tab, wait a few minutes, then re-run.");
+        break;
+      }
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const cards = [...doc.querySelectorAll('.job_seen_beacon')];
+      if (!cards.length) { say(`📄 Page ${page + 1}: no jobs — reached the end.`); break; }
+
+      let hits = 0;
+      for (const card of cards) {
+        let j; try { j = extractCard(card); } catch { continue; }
+        if (!j.title || !j.url || seen.has(j.jk)) continue;
+        seen.add(j.jk);
+        const text = [j.title, j.company, j.snippet].join(" ");
+        if (kwRx && !kwRx.test(text)) continue;
+        if (exRx && exRx.test(text)) continue;
+        matches.push(j); addRow(j); hits++;
+        console.log(`✓ ${j.title} — ${j.company} — ${j.url}`);
+      }
+      say(`page ${page + 1}: ${cards.length} jobs, ${hits} match. Total: ${matches.length}`);
+      if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
+      await delay(cfg.DELAY_MS);
+    }
+
+    if (!matches.length) { say("No matches found (or Indeed blocked the requests — see console)."); return; }
+
+    console.table(matches.map(({ title, company, location, salary }) => ({ title, company, location, salary })));
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = "Title,Company,Location,Salary,URL\n" +
+      matches.map(m => [q(m.title), q(m.company), q(m.location), q(m.salary), q(m.url)].join(",")).join("\n");
+    const a = mk("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `indeed-jobs-${(cfg.Q || "search").replace(/\W+/g, "_").toLowerCase()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    say(`✅ Done — ${matches.length} match(es). Saved ${a.download}.`);
+    if (cfg.OPEN_TABS) for (const m of matches) { window.open(m.url, "_blank"); await delay(500); }
+  }
+})();

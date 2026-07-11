@@ -1,0 +1,70 @@
+/* ============================================================
+   LinkedIn – Bulk Unfollow (tested & working)
+   ------------------------------------------------------------
+   HOW TO USE:
+   1. Open: linkedin.com/mynetwork/network-manager/people-follow/following/
+   2. Open DevTools Console  (Mac: Cmd+Option+J  |  Win: Ctrl+Shift+J)
+   3. Paste this whole script and press Enter.
+
+   NOTES:
+   - Uses aria-label selector so it matches ONLY real person
+     buttons (NOT the "Following" nav tab).
+   - Handles the confirmation dialog by clicking the blue
+     "Unfollow" button inside the modal.
+   - Delays are human-paced. Don't lower them much — LinkedIn
+     rate-limits and can flag rapid automation.
+   - This is IRREVERSIBLE. It will unfollow everyone in the list.
+   ============================================================ */
+
+(async () => {
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const clicked = new WeakSet();
+  let noNewRounds = 0, total = 0;
+
+  // Finds and clicks the blue "Unfollow" button inside the confirmation dialog
+  const confirmUnfollow = async () => {
+    for (let i = 0; i < 15; i++) {
+      const btn = [...document.querySelectorAll("button")].find(b =>
+        b.innerText.trim() === "Unfollow" &&
+        b.closest('[role="dialog"], .artdeco-modal'));
+      if (btn) { btn.click(); return true; }
+      await delay(200);
+    }
+    return false;
+  };
+
+  while (noNewRounds < 5) {
+    let found = 0;
+
+    // aria-label selector — matches ONLY real person buttons, not the nav tab
+    const buttons = [...document.querySelectorAll('button[aria-label^="Click to stop following"]')]
+      .filter(b => !clicked.has(b));
+
+    for (const btn of buttons) {
+      try {
+        const name = btn.getAttribute("aria-label").replace("Click to stop following ", "");
+        btn.scrollIntoView({ behavior: "smooth", block: "center" });
+        await delay(800);
+
+        btn.click();              // opens the confirmation dialog
+        clicked.add(btn);
+        await delay(500);
+
+        if (await confirmUnfollow()) {   // clicks the blue "Unfollow" in the modal
+          found++; total++;
+          console.log(`✓ Unfollowed ${name} (${total})`);
+        } else {
+          console.log("⚠ No dialog for", name, "— skipped");
+        }
+        await delay(1500);        // human pacing — don't lower much
+      } catch (e) { console.log("Skipped:", e); }
+    }
+
+    noNewRounds = found === 0 ? noNewRounds + 1 : 0;
+    console.log("Scrolling…");
+    window.scrollBy({ top: window.innerHeight * 2, behavior: "smooth" });
+    await delay(3500);            // let LinkedIn lazy-load more
+  }
+
+  console.log(`🎉 Finished! Unfollowed ${total} total.`);
+})();

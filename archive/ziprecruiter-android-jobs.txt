@@ -1,0 +1,120 @@
+/* ============================================================
+   ZipRecruiter – Android Job Finder  (tested & working)
+   ------------------------------------------------------------
+   WHAT IT DOES:
+   1. Starts from your current ZipRecruiter search
+      (q=Android Developer, l=India — read straight from the URL).
+   2. Crawls the result pages one by one (using fetch, so it does
+      NOT navigate you away — everything happens in one run).
+   3. On each page it checks every job card for the word
+      "android" in the TITLE or the BODY snippet.
+   4. Collects the exact job-opening link for every match,
+      de-duplicates them, and keeps going to the next page
+      until it hits MAX_PAGES or the last page (empty page).
+   5. SAVES the results to a CSV file (auto-download).
+      Fallback: set OPEN_TABS = true to open matches in tabs.
+
+   HOW TO USE:
+   1. Open your search page, e.g.:
+      ziprecruiter.in/jobs/search?l=India&q=Android+Developer&sort=published_at
+   2. Open DevTools Console (Mac: Cmd+Option+J | Win: Ctrl+Shift+J)
+   3. Paste this whole script and press Enter.
+   4. Watch the console; when done, a CSV downloads automatically.
+
+   TUNE THESE:
+   - KEYWORD   : word to look for (default "android")
+   - MAX_PAGES : how many pages to scan (site max is 500)
+   - DELAY_MS  : pause between page fetches (be polite; avoid blocks)
+   - OPEN_TABS : true = also open each match in a new tab
+   - STOP_AT   : 0 = scan all pages; N = stop after N matches found
+   ============================================================ */
+
+(async () => {
+  // ---------- config ----------
+  const KEYWORD   = "android";
+  const MAX_PAGES = 500;
+  const DELAY_MS  = 700;
+  const OPEN_TABS = false;
+  const STOP_AT   = 0;          // 0 = no limit
+  // ----------------------------
+
+  const rx    = new RegExp(KEYWORD, "i");
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const base  = location.origin + "/jobs/search";
+  const params = new URLSearchParams(location.search);
+
+  const seen    = new Set();
+  const matches = [];
+
+  console.log(`🔎 Searching for "${KEYWORD}" jobs — up to ${MAX_PAGES} pages...`);
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    params.set("page", page);
+    let doc;
+    try {
+      const res  = await fetch(base + "?" + params.toString(), { credentials: "include" });
+      const html = await res.text();
+      doc = new DOMParser().parseFromString(html, "text/html");
+    } catch (e) {
+      console.log(`⚠ page ${page} fetch failed: ${e} — stopping.`);
+      break;
+    }
+
+    const cards = [...doc.querySelectorAll("li.job-listing")];
+    if (cards.length === 0) {
+      console.log(`📄 Page ${page} has no jobs — reached the last page.`);
+      break;
+    }
+
+    let pageHits = 0;
+    for (const card of cards) {
+      const titleEl = card.querySelector("a.jobList-title, a.job-link");
+      const title   = (titleEl?.innerText || "").trim();
+      const url     = titleEl?.href || "";
+      const body    = card.innerText || "";
+      // company/location line (best-effort, robust to layout changes)
+      const meta    = body.split("\n").map(s => s.trim()).filter(Boolean)[1] || "";
+
+      if (rx.test(title) || rx.test(body)) {
+        if (url && !seen.has(url)) {
+          seen.add(url);
+          matches.push({ page, title, company: meta, url });
+          pageHits++;
+          console.log(`✓ [p${page}] ${title}  →  ${url}`);
+        }
+      }
+    }
+
+    console.log(`   page ${page}: ${cards.length} jobs, ${pageHits} match(es). Total so far: ${matches.length}`);
+
+    if (STOP_AT && matches.length >= STOP_AT) {
+      console.log(`🎯 Reached STOP_AT (${STOP_AT}) matches — stopping early.`);
+      break;
+    }
+    await delay(DELAY_MS);
+  }
+
+  console.log(`\n🎉 Done. Found ${matches.length} "${KEYWORD}" job(s).`);
+  if (matches.length === 0) return;
+
+  console.table(matches);
+
+  // ---------- save to CSV file (auto-download) ----------
+  const esc = s => `"${String(s).replace(/"/g, '""')}"`;
+  const csv = "Page,Title,Company/Location,URL\n" +
+    matches.map(m => [m.page, esc(m.title), esc(m.company), esc(m.url)].join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${KEYWORD}-jobs-ziprecruiter.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  console.log(`💾 Saved ${matches.length} jobs to "${KEYWORD}-jobs-ziprecruiter.csv" (check Downloads).`);
+
+  // ---------- fallback: open in tabs ----------
+  if (OPEN_TABS) {
+    console.log("🗂 Opening matches in new tabs...");
+    for (const m of matches) { window.open(m.url, "_blank"); await delay(400); }
+  }
+})();
