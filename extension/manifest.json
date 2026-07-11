@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ApplyVerse",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Aggregate developer jobs across 12 boards + company ATS (Greenhouse/Lever/Ashby/Personio) — token-sweep, Google-dork builder, scheduled watch, fit-scoring, apply-tracking, export.",
   "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads", "cookies", "alarms", "notifications"],
   "host_permissions": [

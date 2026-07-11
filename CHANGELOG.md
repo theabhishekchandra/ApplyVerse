@@ -6,6 +6,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-07-12
+
 ### Added
 - **First-run guided tour** of the "Search all" dashboard (`tour.js` / `tour.css`)
   — spotlights each step (search fields → providers → dork builder → ATS sweep →
@@ -41,6 +43,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   builder + auto-collect, fit-scoring, filtering, apply-tracking, export, and a
   scheduled background watcher.
 
-[Unreleased]: https://github.com/theabhishekchandra/ApplyVerse/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/theabhishekchandra/ApplyVerse/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/theabhishekchandra/ApplyVerse/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/theabhishekchandra/ApplyVerse/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/theabhishekchandra/ApplyVerse/releases/tag/v1.2.0
