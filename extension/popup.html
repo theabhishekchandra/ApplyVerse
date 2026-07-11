@@ -11,27 +11,31 @@
   </header>
 
   <div class="body">
-    <button id="openAll" class="primary" style="width:100%;margin-bottom:10px">🔎 Search ALL providers →</button>
-    <label class="lbl">Or run one site</label>
-    <select id="site"></select>
-    <div id="note" class="note"></div>
-    <div id="warn" class="warn" hidden></div>
+    <button id="openAll" class="primary" style="width:100%">🔎 Search ALL providers →</button>
+    <div id="singleHint" class="note" hidden>Open one of the 12 job sites in this tab to also run just that provider here.</div>
 
-    <div id="form"></div>
+    <div id="single" hidden>
+      <label class="lbl" style="margin-top:10px">Or run this one site</label>
+      <select id="site"></select>
+      <div id="note" class="note"></div>
+      <div id="warn" class="warn" hidden></div>
 
-    <div class="opts">
-      <label class="chk"><input type="checkbox" id="onlyNew"> Only new since last run</label>
-      <label class="chk"><input type="checkbox" id="openTabs"> Open matches in new tabs</label>
+      <div id="form"></div>
+
+      <div class="opts">
+        <label class="chk"><input type="checkbox" id="onlyNew"> Only new since last run</label>
+        <label class="chk"><input type="checkbox" id="openTabs"> Open matches in new tabs</label>
+      </div>
+
+      <div class="row">
+        <button id="start" class="primary">▶ Start</button>
+        <button id="stop" class="ghost" hidden>■ Stop</button>
+        <button id="csv" class="ghost" disabled>⬇ CSV</button>
+      </div>
+
+      <div id="status" class="status"></div>
+      <div id="list" class="list"></div>
     </div>
-
-    <div class="row">
-      <button id="start" class="primary">▶ Start</button>
-      <button id="stop" class="ghost" hidden>■ Stop</button>
-      <button id="csv" class="ghost" disabled>⬇ CSV</button>
-    </div>
-
-    <div id="status" class="status"></div>
-    <div id="list" class="list"></div>
   </div>
 
   <script src="sites.js"></script>

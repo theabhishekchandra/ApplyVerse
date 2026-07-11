@@ -237,6 +237,15 @@ csvBtn.addEventListener("click", downloadCsv);
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   activeTab = tab || null;
   const detected = activeTab ? detectSiteId(hostOf(activeTab.url)) : null;
-  siteSel.value = detected || SITE_ORDER[0];
-  await renderForm(siteSel.value);
+  // Lead with Search-all. Only reveal the single-site form when the current tab
+  // actually IS one of the 12 providers — otherwise it's misleading to preselect one.
+  if (detected) {
+    $("single").hidden = false;
+    $("singleHint").hidden = true;
+    siteSel.value = detected;
+    await renderForm(detected);
+  } else {
+    $("single").hidden = true;
+    $("singleHint").hidden = false;
+  }
 })();
