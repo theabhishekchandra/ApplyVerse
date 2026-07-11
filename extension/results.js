@@ -171,10 +171,11 @@ async function searchAll() {
     setLight(id, "run", "running…");
     statusEl.textContent = `[${SITES[id].name}] opening…`;
     let tab = null, keepTab = false;
+    const domMode = !!AGG[id].dom;   // DOM scrapers need a focused, fully-rendered tab
     try {
-      tab = await chrome.tabs.create({ url: AGG[id].url(shared), active: false });
+      tab = await chrome.tabs.create({ url: AGG[id].url(shared), active: domMode });
       await waitComplete(tab.id);
-      await sleep(1200);
+      await sleep(domMode ? 2800 : 1000);
       const probe = await exec(tab.id, () => ({ href: location.href, hasPwd: !!document.querySelector('input[type=password]') }));
       if (looksLoggedOut(id, probe)) {
         setLight(id, "out", "login needed");
