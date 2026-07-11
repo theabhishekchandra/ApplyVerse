@@ -167,8 +167,11 @@ h1 .count { font-size: 12px; color: var(--muted); font-weight: 600; margin-left:
   background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
   border: 1px solid var(--line);
   transition: transform .12s, border-color .15s, box-shadow .15s;
-  animation: rise .25s ease;
 }
+/* Entrance animation only on a fresh search / load (parent gets .animate-in),
+   staggered — so filtering/re-rendering never re-triggers a flicker. */
+.cards.animate-in .card { animation: cardIn .34s cubic-bezier(.2,.75,.25,1) both; animation-delay: calc(var(--i, 0) * 26ms); }
+@keyframes cardIn { from { opacity: 0; transform: translateY(11px) scale(.985); } to { opacity: 1; transform: none; } }
 .card:hover { transform: translateY(-2px); border-color: rgba(124,92,255,.45); box-shadow: 0 14px 40px rgba(0,0,0,.4), 0 0 0 1px rgba(124,92,255,.15); }
 .card.new::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--grad); }
 .avatar { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 13px; display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff; letter-spacing: .3px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
@@ -186,7 +189,9 @@ h1 .count { font-size: 12px; color: var(--muted); font-weight: 600; margin-left:
 .meta.fit { color: #d9ccff; background: rgba(124,92,255,.16); border-color: rgba(124,92,255,.34); font-weight: 700; }
 .jd-toggle { background: none; border: 0; color: var(--accent-2); font-size: 11px; font-weight: 700; cursor: pointer; padding: 3px 4px; }
 .jd-toggle:hover { text-decoration: underline; filter: none; }
-.jd { margin-top: 9px; font-size: 12px; line-height: 1.6; color: var(--ink-2); background: rgba(255,255,255,.03); border: 1px solid var(--line-2); border-radius: 9px; padding: 10px 12px; }
+/* Collapsible JD — smooth height/opacity instead of instant show/hide. */
+.jd { font-size: 12px; line-height: 1.6; color: var(--ink-2); background: rgba(255,255,255,.03); border: 0 solid var(--line-2); border-radius: 9px; max-height: 0; opacity: 0; overflow: hidden; padding: 0 12px; margin-top: 0; transition: max-height .3s ease, opacity .22s ease, padding .3s ease, margin .3s ease, border-width .3s ease; }
+.jd.open { max-height: 340px; opacity: 1; overflow: auto; padding: 10px 12px; margin-top: 9px; border-width: 1px; }
 
 .badge.applied { color: #04121e; background: var(--done); }
 .badge.saved { color: #1a1030; background: var(--run); }
@@ -216,4 +221,45 @@ h1 .count { font-size: 12px; color: var(--muted); font-weight: 600; margin-left:
   .rail-scroll { max-height: none; }
   .content { height: auto; }
   .card-side { display: none; }
+}
+
+/* ==================== animation & progress upgrades ==================== */
+
+/* Top progress bar — floats over the whole window during search/sweep. */
+.progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1000; background: rgba(124,92,255,.14); overflow: hidden; }
+.progress[hidden] { display: none; }
+.progress-fill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--cyan)); box-shadow: 0 0 12px rgba(62,166,255,.65); transition: width .35s cubic-bezier(.3,.8,.3,1); }
+.progress.indeterminate .progress-fill { width: 35% !important; transition: none; animation: indet 1.15s ease-in-out infinite; }
+@keyframes indet { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
+.progress.done .progress-fill { box-shadow: 0 0 16px rgba(52,226,208,.85); }
+
+/* Skeleton loaders while a run is in flight and no results have arrived yet. */
+.skel-card { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.02); }
+.skel-card .sk-main { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+.skel-av, .skel-line { background: linear-gradient(100deg, rgba(255,255,255,.05) 30%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.05) 70%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; border-radius: 7px; }
+.skel-av { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 13px; }
+.skel-line.w40 { width: 40%; height: 13px; } .skel-line.w70 { width: 70%; height: 11px; } .skel-line.w25 { width: 25%; height: 11px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Search button running state — inline spinner. */
+.btn-spin { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Results-count bump when it changes. */
+h1 .count.bump { display: inline-block; animation: bump .36s ease; }
+@keyframes bump { 0% { transform: scale(1); } 32% { transform: scale(1.26); color: var(--cyan); } 100% { transform: scale(1); } }
+
+/* Action-button press feedback. */
+.act { transition: transform .12s, border-color .15s, color .15s, background .15s; }
+.act:active { transform: scale(.88); }
+
+/* Toast / snackbar for transient confirmations. */
+.toast { position: fixed; left: 50%; bottom: 26px; z-index: 1200; max-width: 82vw; padding: 11px 18px; border-radius: 12px; background: rgba(14,20,36,.97); border: 1px solid rgba(124,92,255,.42); color: var(--ink); font-size: 13px; font-weight: 600; box-shadow: 0 16px 44px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transform: translate(-50%, 18px); transition: opacity .25s ease, transform .3s cubic-bezier(.2,.8,.2,1); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.ok { border-color: rgba(52,226,208,.55); }
+.toast.err { border-color: rgba(255,107,107,.55); }
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }

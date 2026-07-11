@@ -20,6 +20,45 @@ let currentProvider = null;
 let activeSources = null;     // Set of source names shown (null = all)
 let renderTimer = null;
 let track = {};               // jobKey -> "saved" | "applied" | "hidden"
+let _animate = false;         // one-shot: stagger-animate cards on the next render
+
+// ---------- UI feedback: progress bar, toast, skeleton loaders ----------
+const progressEl = $("progress"), progressFill = $("progressFill"), toastEl = $("toast");
+let toastTimer = null;
+function toast(msg, kind) {
+  if (!toastEl) return;
+  toastEl.textContent = msg;
+  toastEl.className = "toast show" + (kind ? " " + kind : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.className = "toast" + (kind ? " " + kind : ""); }, 2600);
+}
+function progressStart(indeterminate) {
+  if (!progressEl) return;
+  progressEl.hidden = false;
+  progressEl.classList.toggle("indeterminate", !!indeterminate);
+  progressEl.classList.remove("done");
+  if (!indeterminate) progressFill.style.width = "0%";
+}
+function progressSet(frac) {
+  if (!progressEl || progressEl.classList.contains("indeterminate")) return;
+  progressFill.style.width = Math.max(0, Math.min(1, frac)) * 100 + "%";
+}
+function progressDone() {
+  if (!progressEl) return;
+  progressEl.classList.remove("indeterminate");
+  progressEl.classList.add("done");
+  progressFill.style.width = "100%";
+  setTimeout(() => { progressEl.hidden = true; progressFill.style.width = "0%"; progressEl.classList.remove("done"); }, 550);
+}
+function skeletonCards(n) {
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement("div"); c.className = "skel-card";
+    c.innerHTML = '<div class="skel-av"></div><div class="sk-main"><div class="skel-line w40"></div><div class="skel-line w70"></div><div class="skel-line w25"></div></div>';
+    frag.appendChild(c);
+  }
+  return frag;
+}
 
 // ---------- derived fields for filtering ----------
 // experience as a [minYears, maxYears] range (or null if unknown) so bucket
@@ -315,9 +354,19 @@ function render() {
   let list = [...merged.values()].filter(e => passes(e, f));
   sortEntries(list, f.sort);
   rowsEl.innerHTML = "";
+  // While a run is in flight and nothing has landed yet, show shimmer skeletons.
+  if (running && merged.size === 0) {
+    rowsEl.classList.remove("animate-in");
+    rowsEl.appendChild(skeletonCards(4));
+    emptyEl.style.display = "none";
+    toolbarEl.hidden = true;
+    return;
+  }
   const frag = document.createDocumentFragment();
-  for (const e of list) frag.appendChild(rowFor(e));
+  list.forEach((e, i) => { const card = rowFor(e); if (_animate && i < 18) card.style.setProperty("--i", i); frag.appendChild(card); });
   rowsEl.appendChild(frag);
+  if (_animate) rowsEl.classList.add("animate-in"); else rowsEl.classList.remove("animate-in");
+  _animate = false;
   toolbarEl.hidden = merged.size === 0;
   const showEmpty = list.length === 0;
   emptyEl.style.display = showEmpty ? "block" : "none";
@@ -328,7 +377,9 @@ function render() {
         ? '<img class="empty-img" src="icons/empty_state.png" alt="No results"><p>No results. Try a broader role/keywords, check provider logins,<br>or run a provider individually from the popup.</p>'
         : EMPTY_DEFAULT;
   }
-  countEl.textContent = merged.size ? "· " + merged.size : "";
+  const countText = merged.size ? "· " + merged.size : "";
+  if (countEl.textContent !== countText && merged.size) { countEl.classList.remove("bump"); void countEl.offsetWidth; countEl.classList.add("bump"); }
+  countEl.textContent = countText;
   showingEl.textContent = merged.size ? `showing ${list.length} of ${merged.size}` : "";
 }
 function rowFor(entry) {
@@ -355,15 +406,21 @@ function rowFor(entry) {
   if (entry._fit > 0) addMeta("★ " + entry._fit + "% match", "fit");
   addMeta(j.salary, "pay"); addMeta(j.exp, "");
   const mode = jobMode(j); if (mode) addMeta(mode[0].toUpperCase() + mode.slice(1), "mode");
-  if (j.jd) { const dt = document.createElement("button"); dt.className = "jd-toggle"; dt.textContent = "▾ details"; dt.onclick = () => { const p = card.querySelector(".jd"); const open = p.style.display !== "none"; p.style.display = open ? "none" : "block"; dt.textContent = open ? "▾ details" : "▴ hide"; }; metas.appendChild(dt); }
+  if (j.jd) { const dt = document.createElement("button"); dt.className = "jd-toggle"; dt.textContent = "▾ details"; dt.onclick = () => { const p = card.querySelector(".jd"); const open = p.classList.toggle("open"); dt.textContent = open ? "▴ hide" : "▾ details"; }; metas.appendChild(dt); }
   if (metas.children.length) main.appendChild(metas);
-  if (j.jd) { const p = document.createElement("div"); p.className = "jd"; p.style.display = "none"; p.textContent = j.jd + "…"; main.appendChild(p); }
+  if (j.jd) { const p = document.createElement("div"); p.className = "jd"; p.textContent = j.jd + "…"; main.appendChild(p); }
 
   const side = document.createElement("div"); side.className = "card-side";
   const acts = document.createElement("div"); acts.className = "card-acts";
   const mkBtn = (label, val, title) => {
     const b = document.createElement("button"); b.className = "act" + (status === val ? " on" : ""); b.textContent = label; b.title = title;
-    b.onclick = async e => { e.stopPropagation(); await setTrackStatus(key, status === val ? null : val); render(); };
+    b.onclick = async e => {
+      e.stopPropagation();
+      const nv = status === val ? null : val;
+      await setTrackStatus(key, nv);
+      if (nv) toast(nv === "saved" ? "★ Saved" : nv === "applied" ? "✓ Marked applied" : "✕ Hidden", "ok");
+      render();
+    };
     return b;
   };
   acts.append(mkBtn("★", "saved", "Save"), mkBtn("✓", "applied", "Mark applied"), mkBtn("✕", "hidden", "Hide"));
@@ -392,7 +449,7 @@ chrome.runtime.onMessage.addListener(msg => {
 $("onlyNew").addEventListener("change", render);
 
 // ---------- ATS sweep (direct fetch, no tabs) ----------
-async function sweepAts(id, shared) {
+async function sweepAts(id, shared, onFrac) {
   const platform = provState[id].platform;
   const m = atsMatchers(shared.role, shared.keywords, shared.exclude);
   const locRx = atsLocRx(shared.loc);
@@ -407,6 +464,7 @@ async function sweepAts(id, shared) {
     onProgress: (done, total, found) => {
       setLight(id, "run", `${done}/${total} · ${found}`);
       statusEl.textContent = `[${nameOf(id)}] ${done}/${total} companies · ${found} match(es)`;
+      if (onFrac) onFrac(total ? done / total : 0);
     }
   });
   setLight(id, "done", `${r.found} found`);
@@ -422,11 +480,18 @@ async function searchAll() {
 
   seenAtStart = new Set((await chrome.storage.local.get("agg_seen")).agg_seen || []);
   merged = new Map(); activeSources = null; rowsEl.innerHTML = ""; countEl.textContent = "";
-  running = true; $("search").disabled = true; $("exportBtn").disabled = true; $("search").textContent = "…searching";
+  running = true; $("search").disabled = true; $("exportBtn").disabled = true;
+  $("search").innerHTML = '<span class="btn-spin"></span>Searching…';
+  progressStart(false); progressSet(0.02);
+  render();   // show shimmer skeletons immediately
 
+  const total = selected.length; let doneN = 0;
   for (const id of selected) {
     currentProvider = id;
-    if (provState[id].ats) { await sweepAts(id, shared); continue; }
+    if (provState[id].ats) {
+      await sweepAts(id, shared, f => progressSet((doneN + f) / total));
+      doneN++; progressSet(doneN / total); continue;
+    }
     setLight(id, "run", "running…");
     statusEl.textContent = `[${SITES[id].name}] opening…`;
     let tab = null, keepTab = false;
@@ -440,7 +505,7 @@ async function searchAll() {
         setLight(id, "out", "login needed"); keepTab = true;
         await chrome.tabs.update(tab.id, { active: true });
         statusEl.textContent = `[${SITES[id].name}] needs login — log into the opened tab, then re-run.`;
-        continue;
+        doneN++; progressSet(doneN / total); continue;
       }
       const res = await exec(tab.id, SITES[id].scrape, buildCfg(id, shared));
       (res || []).forEach(j => upsert(j, id));
@@ -454,16 +519,20 @@ async function searchAll() {
     } finally {
       if (tab && !keepTab) { try { await chrome.tabs.remove(tab.id); } catch (e) {} }
     }
+    doneN++; progressSet(doneN / total);
   }
 
   currentProvider = null;
   running = false; $("search").disabled = false; $("search").textContent = "▶ Search selected";
+  progressDone();
 
   const allUrls = [...merged.values()].map(e => e.job.url).filter(Boolean);
   await chrome.storage.local.set({ agg_seen: [...new Set([...seenAtStart, ...allUrls])].slice(-8000) });
 
   const newCount = [...merged.values()].filter(e => e.isNew).length;
   statusEl.textContent = `✅ Done — ${merged.size} job(s), ${newCount} new.`;
+  if (merged.size) toast(`✅ ${merged.size} job${merged.size > 1 ? "s" : ""} · ${newCount} new`, "ok");
+  _animate = true;
   $("exportBtn").disabled = merged.size === 0;
   hasRun = true;
   render();
@@ -492,20 +561,23 @@ function doExport(fmt) {
   const stamp = entries.length;
   if (fmt === "json") {
     download(`jobfinder-${stamp}.json`, "application/json", JSON.stringify(rows, null, 2));
+    toast(`⬇ Exported ${stamp} jobs as JSON`, "ok");
   } else if (fmt === "csv") {
     const q = s => `"${String(s).replace(/"/g, '""')}"`;
     const text = [COLS.join(",")].concat(rows.map(r => COLS.map(c => q(r[c])).join(","))).join("\n");
     download(`jobfinder-${stamp}.csv`, "text/csv", text);
+    toast(`⬇ Exported ${stamp} jobs as CSV`, "ok");
   } else if (fmt === "md") {
     const esc = s => String(s).replace(/\|/g, "\\|");
     const head = `| ${COLS.join(" | ")} |\n| ${COLS.map(() => "---").join(" | ")} |`;
     const body = rows.map(r => "| " + COLS.map(c => c === "Title" && r.URL ? `[${esc(r.Title)}](${r.URL})` : esc(r[c])).join(" | ") + " |").join("\n");
     download(`jobfinder-${stamp}.md`, "text/markdown", `# ApplyVerse — ${stamp} jobs\n\n${head}\n${body}\n`);
+    toast(`⬇ Exported ${stamp} jobs as Markdown`, "ok");
   } else if (fmt === "tsv") {
     const text = [COLS.join("\t")].concat(rows.map(r => COLS.map(c => String(r[c]).replace(/\t/g, " ")).join("\t"))).join("\n");
     navigator.clipboard.writeText(text).then(
-      () => statusEl.textContent = `✅ Copied ${stamp} rows (TSV) — paste into Google Sheets or Excel.`,
-      () => statusEl.textContent = "Clipboard blocked — try CSV export instead."
+      () => { statusEl.textContent = `✅ Copied ${stamp} rows (TSV) — paste into Google Sheets or Excel.`; toast(`✅ Copied ${stamp} rows to clipboard`, "ok"); },
+      () => { statusEl.textContent = "Clipboard blocked — try CSV export instead."; toast("Clipboard blocked — try CSV", "err"); }
     );
   }
   $("exportMenu").hidden = true;
@@ -528,6 +600,7 @@ $("profileSel").addEventListener("change", async e => {
   $("role").value = p.role || ""; $("keywords").value = p.keywords || ""; $("exclude").value = p.exclude || ""; $("loc").value = p.location || "";
   await jfSetActive(id);
   statusEl.textContent = `Loaded profile “${p.name}”.`;
+  toast(`Loaded profile “${p.name}”`, "ok");
 });
 $("saveProfile").addEventListener("click", async () => {
   const role = $("role").value.trim();
@@ -541,6 +614,7 @@ $("saveProfile").addEventListener("click", async () => {
   await jfSetActive(p.id);
   await loadProfilesDropdown();
   statusEl.textContent = `Saved profile “${p.name}”. The background watcher can now track it (⚙ settings).`;
+  toast(`Saved profile “${p.name}”`, "ok");
 });
 
 // ---------- watched view (?watched=1): show background-swept results ----------
@@ -562,6 +636,7 @@ async function loadWatched() {
   hasRun = true;
   document.querySelector("h1").firstChild.textContent = "Watched results ";
   $("exportBtn").disabled = merged.size === 0;
+  _animate = true;
   render();
   statusEl.textContent = list.length ? `${list.length} job(s) from the background watcher.` : "No watched results yet — enable the watcher in ⚙ settings.";
 }
