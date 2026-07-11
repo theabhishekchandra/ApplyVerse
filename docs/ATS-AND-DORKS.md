@@ -86,6 +86,34 @@ site:{company}.recruitee.com "Android Developer"
 site:myworkdayjobs.com "Android Developer"
 ```
 
+### Validated `site:` operators (tested live in Google)
+
+The right operator differs by platform. Boards that live on **per-company
+subdomains** need the **bare registrable domain** (jobs sit on
+`careers-<company>.icims.com`, `<tenant>.wdN.myworkdayjobs.com`, etc.); shared
+board hosts use their specific host:
+
+| Platform | Correct `site:` operator | Notes |
+|----------|--------------------------|-------|
+| Greenhouse | `boards.greenhouse.io` **+** `job-boards.greenhouse.io` | both hosts in use now |
+| Lever | `jobs.lever.co` | |
+| Ashby | `jobs.ashbyhq.com` | |
+| Workable | `apply.workable.com` | |
+| SmartRecruiters | `jobs.smartrecruiters.com` / `careers.smartrecruiters.com` | |
+| Workday | `myworkdayjobs.com` (bare) | per-tenant subdomains; verified rich results |
+| iCIMS | `icims.com` (bare) | ⚠ `jobs.icims.com` returns **nothing** — jobs are on `careers-<co>.icims.com` |
+| Taleo | `taleo.net` (bare) | |
+| Oracle Cloud | `oraclecloud.com` (bare) | |
+| SuccessFactors / SAP | `careers.successfactors.com` / `jobs.sap.com` | |
+| Teamtailor / Recruitee / Avature / Dayforce / ADP / UKG | bare domain | per-company subdomains |
+
+**Two learnings (both baked into `dorks.html`):**
+1. **Split, don't cram.** One giant query ORing many `site:` with a strict skill
+   AND clause returns **zero** on Google (tested). The builder splits selected
+   platforms into small batches (default 4) — one query each.
+2. **Skills AND is optional.** Requiring `(Kotlin OR …)` over-narrows small
+   boards; the builder has a *Require a skill match* toggle to loosen it.
+
 **Hidden career pages (companies that don't say "careers"):**
 ```
 intitle:careers "Android Developer"

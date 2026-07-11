@@ -138,15 +138,17 @@ var ATS_SEED = {
   greenhouse: [
     "stripe", "airbnb", "coinbase", "databricks", "robinhood", "dropbox", "gitlab",
     "figma", "discord", "brex", "samsara", "cloudflare", "instacart", "lyft",
-    "pinterest", "reddit", "twitch", "asana", "affirm", "chime", "flexport", "gusto"
+    "pinterest", "reddit", "twitch", "asana", "affirm", "chime", "flexport", "gusto",
+    "capco", "postman", "speechify"
   ],
   lever: [
-    "spotify", "gopuff", "alloy", "sysdig", "jobgether", "hhaexchange", "highspot", "tala"
+    "spotify", "gopuff", "alloy", "sysdig", "jobgether", "hhaexchange", "highspot",
+    "tala", "safe", "ekohealth"
   ],
   ashby: [
     "openai", "notion", "ramp", "cohere", "linear", "vercel", "replit", "perplexity",
     "supabase", "posthog", "modal", "runway", "astronomer", "watershed",
-    "bjakcareer", "patreon", "substack"
+    "bjakcareer", "patreon", "substack", "aspora"
   ],
   workable: [],
   recruitee: []
