@@ -1,5 +1,5 @@
 /* ================================================================
-   Wellfound – Universal Job Finder  (interactive form)
+   Wellfound – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste this whole file into the DevTools Console while you're on a
    Wellfound jobs search (wellfound.com/jobs) with your role/filters
@@ -65,7 +65,7 @@
   p.id = "wf-panel";
 
   const header = mk("div", "padding:10px 12px;background:#1a1a1a;font-weight:600;display:flex;justify-content:space-between;align-items:center");
-  const brand = mk("span"); brand.appendChild(mk("span", "", "w")); brand.appendChild(mk("span", "color:#ff3d54", ": Job Finder"));
+  const brand = mk("span"); brand.appendChild(mk("span", "", "w")); brand.appendChild(mk("span", "color:#ff3d54", ": ApplyVerse"));
   header.appendChild(brand);
   const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
 

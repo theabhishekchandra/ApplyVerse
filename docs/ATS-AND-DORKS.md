@@ -27,7 +27,7 @@ cross-company search **except** SmartRecruiters (`q=`) and partially Lever.
 | **Workable** | `https://apply.workable.com/api/v1/widget/accounts/{company}` (or `https://www.workable.com/api/accounts/{subdomain}`; `details=true` for full JD) | No | per-company |
 | **Recruitee** | `https://{company}.recruitee.com/api/offers` (~120 req/min) | No | per-company |
 | **Personio** | `https://{company}.jobs.personio.de/xml?language=en` (XML) | No | per-company |
-| **SmartRecruiters** ✅ *(already a Job-Finder provider)* | `https://api.smartrecruiters.com/v1/companies/{company}/postings?q={term}&limit=100&offset={n}` | **Yes** — `q=` | per-company |
+| **SmartRecruiters** ✅ *(already a ApplyVerse provider)* | `https://api.smartrecruiters.com/v1/companies/{company}/postings?q={term}&limit=100&offset={n}` | **Yes** — `q=` | per-company |
 
 Notes:
 - **Board token = the URL path.** `boards.greenhouse.io/acme` → token `acme`;
@@ -128,7 +128,7 @@ inurl:careers "Android Developer" (Kotlin OR Compose)
 
 ---
 
-## 3. How this maps onto Job-Finder
+## 3. How this maps onto ApplyVerse
 
 The project already proves the pattern: **SmartRecruiters** is a per-company ATS
 provider using its public API. The same shape extends cleanly.

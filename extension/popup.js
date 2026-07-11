@@ -1,4 +1,4 @@
-/* popup.js — control UI for the Job Finder extension.
+/* popup.js — control UI for the ApplyVerse extension.
    Detects the active tab's site, renders that site's form, injects the
    site's scraper into the tab, streams matches live, tracks "seen" jobs
    across runs (chrome.storage), and exports CSV. */

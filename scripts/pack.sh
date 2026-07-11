@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Build a Chrome Web Store upload zip from extension/ — only runtime files.
-# Usage: ./scripts/pack.sh   → dist/job-finder-<version>.zip
+# Usage: ./scripts/pack.sh   → dist/applyverse-<version>.zip
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/extension"
 DIST="$ROOT/dist"
 VERSION="$(node -e "process.stdout.write(require('$SRC/manifest.json').version)")"
-OUT="$DIST/job-finder-$VERSION.zip"
+OUT="$DIST/applyverse-$VERSION.zip"
 
 mkdir -p "$DIST"
 rm -f "$OUT"

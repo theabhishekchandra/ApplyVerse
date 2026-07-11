@@ -1,5 +1,5 @@
 /* ================================================================
-   LinkedIn – Universal Job Finder  (interactive form)
+   LinkedIn – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste this whole file into the DevTools Console while you're on
    any LinkedIn Jobs search page (linkedin.com/jobs/...). A form
@@ -72,7 +72,7 @@
   p.id = "ljf-panel";
 
   const header = mk("div", "padding:10px 12px;background:#0a4a72;font-weight:600;display:flex;justify-content:space-between;align-items:center");
-  header.appendChild(mk("span", "", "in  Job Finder"));
+  header.appendChild(mk("span", "", "in  ApplyVerse"));
   const closeX = mk("span", "cursor:pointer;opacity:.7", "✕");
   header.appendChild(closeX);
   p.appendChild(header);

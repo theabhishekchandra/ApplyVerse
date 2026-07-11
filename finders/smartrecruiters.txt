@@ -1,5 +1,5 @@
 /* ================================================================
-   SmartRecruiters – Universal Job Finder  (interactive form)
+   SmartRecruiters – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    SmartRecruiters is an ATS: each employer has its own careers page
    at careers.smartrecruiters.com/<Company>. There is no single global

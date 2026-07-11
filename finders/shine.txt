@@ -1,5 +1,5 @@
 /* ================================================================
-   Shine.com – Universal Job Finder  (interactive form)
+   Shine.com – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste into the DevTools Console on a Shine search page, e.g.
    shine.com/job-search/android-developer-jobs. A form appears — set
@@ -38,7 +38,7 @@
   const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#1a1405;color:#fff6e5;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #f5a623;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
   p.id = "shf-panel";
   const header = mk("div", "padding:10px 12px;background:#8a5a00;font-weight:600;display:flex;justify-content:space-between;align-items:center");
-  header.appendChild(mk("span", "", "☀ Shine Job Finder"));
+  header.appendChild(mk("span", "", "☀ Shine ApplyVerse"));
   const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
 
   const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "shf-form";

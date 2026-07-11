@@ -1,5 +1,5 @@
 /* ================================================================
-   foundit (Monster) – Universal Job Finder  (interactive form)
+   foundit (Monster) – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste into the DevTools Console while on foundit.in. A form appears
    — set Profile / Keywords / Exclude, click ▶ Start. CSV downloads.
@@ -34,7 +34,7 @@
   const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#0f0b22;color:#efeaff;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #7b3ff2;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
   p.id = "fdf-panel";
   const header = mk("div", "padding:10px 12px;background:#5a27b5;font-weight:600;display:flex;justify-content:space-between;align-items:center");
-  header.appendChild(mk("span", "", "◆ foundit Job Finder"));
+  header.appendChild(mk("span", "", "◆ foundit ApplyVerse"));
   const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
 
   const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "fdf-form";

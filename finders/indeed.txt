@@ -1,5 +1,5 @@
 /* ================================================================
-   Indeed – Universal Job Finder  (interactive form)
+   Indeed – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste into the DevTools Console on an Indeed results page, e.g.
    in.indeed.com/jobs?q=android+developer&l=India. A form appears —
@@ -44,7 +44,7 @@
   const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#07101f;color:#eaf0ff;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #2557a7;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
   p.id = "idf-panel";
   const header = mk("div", "padding:10px 12px;background:#2557a7;font-weight:600;display:flex;justify-content:space-between;align-items:center");
-  header.appendChild(mk("span", "", "indeed  Job Finder"));
+  header.appendChild(mk("span", "", "indeed  ApplyVerse"));
   const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
 
   const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "idf-form";

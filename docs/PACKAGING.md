@@ -1,10 +1,10 @@
 # Packaging & Chrome Web Store checklist
 
-Job Finder is a Manifest V3 extension with no build step — the source in
+ApplyVerse is a Manifest V3 extension with no build step — the source in
 `extension/` *is* what ships. To produce a store-ready zip:
 
 ```bash
-./scripts/pack.sh        # → dist/job-finder-<version>.zip
+./scripts/pack.sh        # → dist/applyverse-<version>.zip
 ```
 
 Then upload the zip at the [Chrome Web Store Developer

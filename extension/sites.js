@@ -1,5 +1,5 @@
 /* ================================================================
-   sites.js — the site registry for the Job Finder extension.
+   sites.js — the site registry for the ApplyVerse extension.
 
    Each entry:
    • name    — display name

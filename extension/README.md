@@ -1,4 +1,4 @@
-# Job Finder — Chrome extension
+# ApplyVerse — Chrome extension
 
 The 12 console scripts, turned into one Chrome extension. Instead of pasting
 code into DevTools, you click the toolbar icon, pick a site, set your filters,
@@ -11,7 +11,7 @@ new since last run** across every site.
 1. Open **`chrome://extensions`**.
 2. Turn on **Developer mode** (top-right).
 3. Click **Load unpacked** and select this **`extension/`** folder.
-4. The 🔎 Job Finder icon appears in the toolbar. Pin it if you like.
+4. The 🔎 ApplyVerse icon appears in the toolbar. Pin it if you like.
 
 It's a private/local extension — not on the Chrome Web Store — so "Load
 unpacked" is the way to run it.
@@ -83,7 +83,7 @@ public ATS APIs; it never scrapes the job sites or bypasses a CAPTCHA.
 ### Scraper health / drift detection
 
 The DOM-scrape boards can break when a site changes its layout (ZipRecruiter did
-once). Job Finder records each board's typical yield; if a provider that reliably
+once). ApplyVerse records each board's typical yield; if a provider that reliably
 returned jobs suddenly returns **0**, its row shows **“0 — drift?”** and a
 warning, so you know it's the scraper — not an empty search.
 
@@ -140,7 +140,7 @@ and they never bypass a CAPTCHA.
 ## Automation — let it watch for you (⚙ settings)
 
 Open **⚙ Automation & settings** (link in the popup, or the results sidebar) to
-turn Job Finder into a background watcher:
+turn ApplyVerse into a background watcher:
 
 1. **Save a search profile** — name a role + keywords + exclude (or hit **＋ Save**
    on the results page to capture the current fields). Pick one as **active**.
@@ -160,7 +160,7 @@ endpoints, no CAPTCHA bypass.
 
 1. Open the job site and run its normal search (set role/location/filters
    there — the same starting pages the console scripts used).
-2. Click the **🔎 Job Finder** toolbar icon.
+2. Click the **🔎 ApplyVerse** toolbar icon.
 3. The popup **auto-detects the site** from your active tab. Adjust the Site
    dropdown if needed, set **Keywords / Exclude / limits**, then **▶ Start**.
 

@@ -1,5 +1,5 @@
 /* ============================================================
-   ZipRecruiter – Android Job Finder  (tested & working)
+   ZipRecruiter – Android ApplyVerse  (tested & working)
    ------------------------------------------------------------
    WHAT IT DOES:
    1. Starts from your current ZipRecruiter search

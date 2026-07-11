@@ -1,5 +1,5 @@
 /* ================================================================
-   ZipRecruiter – Universal Job Finder  (interactive form)
+   ZipRecruiter – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste this whole file into the DevTools Console on any
    ZipRecruiter search page. A form panel appears — type your
@@ -42,7 +42,7 @@
 
   p.innerHTML =
     '<div style="padding:10px 12px;background:#12463a;font-weight:600;display:flex;justify-content:space-between;align-items:center">'+
-      '<span>🔎 Job Finder</span><span id="zjf-x" style="cursor:pointer;opacity:.7">✕</span></div>'+
+      '<span>🔎 ApplyVerse</span><span id="zjf-x" style="cursor:pointer;opacity:.7">✕</span></div>'+
     '<div id="zjf-form" style="padding:10px 12px;overflow:auto">'+
       field("Profile / search role", "zjf-profile", curQ, "e.g. Android Developer")+
       field("Keywords (comma-sep — ANY match; blank = all)", "zjf-keywords", "android, kotlin, jetpack, flutter", "android, kotlin")+

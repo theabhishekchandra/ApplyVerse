@@ -1,5 +1,5 @@
 /* ================================================================
-   Naukri – Universal Job Finder  (interactive form)
+   Naukri – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste this whole file into the DevTools Console while you're on a
    Naukri job-search results page (e.g. naukri.com/android-developer-
@@ -70,7 +70,7 @@
   p.id = "nkf-panel";
 
   const header = mk("div", "padding:10px 12px;background:#1b2a6b;font-weight:600;display:flex;justify-content:space-between;align-items:center");
-  header.appendChild(mk("span", "", "🔷 Naukri Job Finder"));
+  header.appendChild(mk("span", "", "🔷 Naukri ApplyVerse"));
   const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
 
   const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "nkf-form";

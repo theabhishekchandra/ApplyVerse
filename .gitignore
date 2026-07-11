@@ -40,5 +40,5 @@ coverage/
 Thumbs.db
 Desktop.ini
 
-# Tool output (job-finder CSV exports)
+# Tool output (applyverse CSV exports)
 *.csv

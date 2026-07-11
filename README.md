@@ -1,4 +1,4 @@
-# Job-Finder
+# ApplyVerse
 
 A personal toolkit for searching developer jobs across major job boards. Each
 tool is a **self-contained browser-console script** — you paste it into your
@@ -107,9 +107,9 @@ skeletons), a tool can be added.
 ## Layout
 
 ```
-Job-Finder/
+ApplyVerse/
 ├── README.md              ← you are here
-├── finders/               ← the 12 job-finder scripts
+├── finders/               ← the 12 applyverse scripts
 ├── utils/                 ← linkedin-unfollow.txt
 ├── archive/               ← superseded / old versions
 └── docs/

@@ -1,19 +1,19 @@
-# Install Job Finder (2 minutes)
+# Install ApplyVerse (2 minutes)
 
-Job Finder is a Chrome extension you install from a folder — it's not on the
+ApplyVerse is a Chrome extension you install from a folder — it's not on the
 Chrome Web Store. It's safe: it runs entirely in your own browser, stores
 everything locally, and never sends your data anywhere.
 
 ## Steps
 
-1. **Unzip** `job-finder-<version>.zip`. You'll get a **`job-finder`** folder —
+1. **Unzip** `applyverse-<version>.zip`. You'll get a **`applyverse`** folder —
    remember where you put it (don't delete it later; Chrome loads from this
    folder).
 2. Open Chrome and go to **`chrome://extensions`** (type it in the address bar).
 3. Turn on **Developer mode** — the toggle in the **top-right**.
-4. Click **Load unpacked** (top-left) and select the **`job-finder`** folder you
+4. Click **Load unpacked** (top-left) and select the **`applyverse`** folder you
    unzipped.
-5. The 🔎 **Job Finder** icon appears in your toolbar. Click the puzzle-piece
+5. The 🔎 **ApplyVerse** icon appears in your toolbar. Click the puzzle-piece
    icon and **pin** it so it's always visible.
 
 That's it — click the icon to start.
@@ -34,5 +34,5 @@ That's it — click the icon to start.
 
 ## Uninstall
 
-`chrome://extensions` → **Remove** on the Job Finder card. Your saved settings
+`chrome://extensions` → **Remove** on the ApplyVerse card. Your saved settings
 and results are removed with it.

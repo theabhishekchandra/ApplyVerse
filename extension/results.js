@@ -500,7 +500,7 @@ function doExport(fmt) {
     const esc = s => String(s).replace(/\|/g, "\\|");
     const head = `| ${COLS.join(" | ")} |\n| ${COLS.map(() => "---").join(" | ")} |`;
     const body = rows.map(r => "| " + COLS.map(c => c === "Title" && r.URL ? `[${esc(r.Title)}](${r.URL})` : esc(r[c])).join(" | ") + " |").join("\n");
-    download(`jobfinder-${stamp}.md`, "text/markdown", `# Job Finder — ${stamp} jobs\n\n${head}\n${body}\n`);
+    download(`jobfinder-${stamp}.md`, "text/markdown", `# ApplyVerse — ${stamp} jobs\n\n${head}\n${body}\n`);
   } else if (fmt === "tsv") {
     const text = [COLS.join("\t")].concat(rows.map(r => COLS.map(c => String(r[c]).replace(/\t/g, " ")).join("\t"))).join("\n");
     navigator.clipboard.writeText(text).then(

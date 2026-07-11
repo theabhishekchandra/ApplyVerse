@@ -1,5 +1,5 @@
 /* ================================================================
-   Instahyre – Universal Job Finder  (interactive form)
+   Instahyre – Universal ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste into the DevTools Console while logged in on Instahyre
    (instahyre.com/search-jobs). A form appears — set Skill/Profile,
@@ -35,7 +35,7 @@
   const p = mk("div", "position:fixed;top:16px;right:16px;width:340px;max-height:88vh;z-index:2147483647;background:#07211f;color:#eaf7f5;font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;border:1px solid #17b5a3;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden");
   p.id = "ihf-panel";
   const header = mk("div", "padding:10px 12px;background:#0d5a52;font-weight:600;display:flex;justify-content:space-between;align-items:center");
-  header.appendChild(mk("span", "", "⚡ Instahyre Job Finder"));
+  header.appendChild(mk("span", "", "⚡ Instahyre ApplyVerse"));
   const closeX = mk("span", "cursor:pointer;opacity:.7", "✕"); header.appendChild(closeX); p.appendChild(header);
 
   const form = mk("div", "padding:10px 12px;overflow:auto"); form.id = "ihf-form";

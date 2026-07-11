@@ -1,5 +1,5 @@
 /* ================================================================
-   YC Work at a Startup – Job Finder  (interactive form)
+   YC Work at a Startup – ApplyVerse  (interactive form)
    ----------------------------------------------------------------
    Paste into the DevTools Console on workatastartup.com/jobs while
    logged in. A form appears — set Keywords / Exclude, click ▶ Start.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Package the Job Finder extension into a clean, shareable .zip.
+# Package the ApplyVerse extension into a clean, shareable .zip.
 #
-# Produces  dist/job-finder-<version>.zip  containing ONLY the files Chrome
+# Produces  dist/applyverse-<version>.zip  containing ONLY the files Chrome
 # needs at runtime — no README/docs/scripts, no .git, no OS junk. Your friends
 # unzip it and load the folder via chrome://extensions -> "Load unpacked".
 # (A packed .crx is intentionally NOT produced: Chrome blocks installing .crx
@@ -42,18 +42,18 @@ elif command -v python3 >/dev/null 2>&1; then
 fi
 
 mkdir -p dist
-OUT="$EXT_DIR/dist/job-finder-${VERSION}.zip"
+OUT="$EXT_DIR/dist/applyverse-${VERSION}.zip"
 rm -f "$OUT"
 
-# Stage into a "job-finder/" folder so unzipping ALWAYS yields one clean folder
+# Stage into a "applyverse/" folder so unzipping ALWAYS yields one clean folder
 # to point "Load unpacked" at — regardless of which unzip tool the friend uses.
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-mkdir -p "$STAGE/job-finder"
-cp -R "${FILES[@]}" "$STAGE/job-finder/"
+mkdir -p "$STAGE/applyverse"
+cp -R "${FILES[@]}" "$STAGE/applyverse/"
 find "$STAGE" -name '.DS_Store' -delete
 
-( cd "$STAGE" && zip -r -X "$OUT" job-finder >/dev/null )
+( cd "$STAGE" && zip -r -X "$OUT" applyverse >/dev/null )
 
 echo "✓ built $OUT"
 echo "  version $VERSION · $(du -h "$OUT" | cut -f1) · $(unzip -l "$OUT" | tail -1 | awk '{print $2}') files"
