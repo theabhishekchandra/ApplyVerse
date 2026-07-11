@@ -105,23 +105,26 @@ inurl:careers "Android Developer" (Kotlin OR Compose)
 The project already proves the pattern: **SmartRecruiters** is a per-company ATS
 provider using its public API. The same shape extends cleanly.
 
-**Proposed additions (in priority order):**
+**Additions (all three now BUILT — `extension/ats.js`, `dorks.html`, popup):**
 
-1. **Google-dork builder page** — a form (role synonyms, skills, locations, which
-   ATS `site:` list, exclusions, freshers/senior) that generates the dork and
-   opens Google in a tab. Zero API risk, immediately useful, and mirrors exactly
-   the workflow above. Low effort.
+1. ✅ **Google-dork builder page** (`dorks.html` / `dorks.js`) — a form (role
+   synonyms, skills, locations, which ATS `site:` list, exclusions,
+   freshers/senior) that generates the dork and opens Google in a tab, plus
+   per-ATS one-liners. Reached from the **⚡ Dork builder** link on the Search-all
+   page. Zero API risk — only opens a Google URL.
 
-2. **ATS providers (per-company)** — add Greenhouse / Lever / Ashby / Workable /
-   Recruitee alongside SmartRecruiters in the single-site popup: user enters a
-   company token, gets that company's jobs (keyword-filtered). Each is ~30 lines
-   given the endpoints above. Medium effort.
+2. ✅ **ATS providers (per-company)** — Greenhouse / Lever / Ashby / Workable /
+   Recruitee added alongside SmartRecruiters in the single-site popup dropdown
+   (`greenhouse_co`, `lever_co`, …): enter a company token, get that company's
+   jobs (keyword-filtered). Self-contained scrapes hitting the public APIs above.
 
-3. **ATS token-sweep** — a curated seed list of company tokens per ATS; the
-   aggregator sweeps them in parallel for the role, merging into the same
-   de-duplicated results table. This is the "search 50+ ATS automatically"
-   capability. Higher effort + needs a maintained token list, but it's the real
-   coverage win (jobs Google never indexed).
+3. ✅ **ATS token-sweep** — `ats.js` holds a **curated, verified** seed list of
+   company tokens per ATS (`ATS_SEED`) and `atsSweep()` fetches them in parallel
+   (bounded concurrency, direct `fetch`, no tabs), keyword-filters, and streams
+   into the same de-duplicated results table. Surfaced as the **Company ATS ·
+   direct** provider group (Greenhouse / Lever / Ashby). This is the "search 50+
+   company ATS automatically" coverage win — jobs the aggregators never index.
+   Extend `ATS_SEED` with tokens found via the Dork builder.
 
 **Boundaries unchanged:** these are public, no-auth read endpoints hit at
 human-paced rates; no CAPTCHA bypass; dedupe by job URL.

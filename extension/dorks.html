@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Job Finder — Google-dork builder</title>
+  <link rel="icon" type="image/png" href="icons/icon48.png">
+  <link rel="stylesheet" href="dorks.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <img class="logo" src="icons/icon48.png" alt="Logo">
+      <div>
+        <h1>Google-dork builder</h1>
+        <a class="back" href="results.html">← back to Search all</a>
+      </div>
+    </div>
+    <p class="lede">Company career portals (Greenhouse, Lever, Ashby, Workday…) are only
+      partly indexed by aggregators. A Google dork finds the ones Google <em>did</em> index —
+      straight on the company's ATS. Build one below, then open it. Grab the company
+      token from each result URL and add it to the ATS sweep.</p>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>What & where</h2>
+        <div class="fld">
+          <label>Role synonyms <span style="opacity:.6">(quoted, OR-joined)</span></label>
+          <input id="roles" type="text" value="Android Developer, Android Engineer, Android Software Engineer, Mobile Engineer">
+          <div class="presets" id="rolePresets"></div>
+        </div>
+        <div class="fld">
+          <label>Skills / keywords <span style="opacity:.6">(OR-joined)</span></label>
+          <input id="skills" type="text" value="Kotlin, Jetpack Compose, Android SDK, AOSP">
+        </div>
+        <div class="fld">
+          <label>Locations <span style="opacity:.6">(OR-joined; blank = anywhere)</span></label>
+          <input id="locs" type="text" value="Bengaluru, Bangalore, Hyderabad, Pune, Chennai, Gurgaon, Noida, India">
+          <div class="presets" id="locPresets"></div>
+        </div>
+        <div class="fld">
+          <label>Seniority</label>
+          <select id="level">
+            <option value="any">Any</option>
+            <option value="senior">Senior / Staff / Lead</option>
+            <option value="fresher">Fresher / Entry level</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>ATS platforms (site:)</h2>
+        <div class="checks" id="atsChecks"></div>
+        <div class="fld" style="margin-top:14px">
+          <label class="chk on" style="border:0;background:none;padding:0">
+            <input type="checkbox" id="excludeAgg" checked>
+            <span>Exclude aggregators (LinkedIn, Indeed, Naukri…)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="out">
+      <textarea id="dork" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="primary" id="open">🔎 Open in Google</button>
+        <button class="ghost" id="copy">⧉ Copy</button>
+        <span class="copied" id="copied" hidden>copied ✓</span>
+        <span style="flex:1"></span>
+        <span style="color:var(--muted);font-size:11.5px">Then in Google: <b>Tools → Any time → Past week</b> for fresh posts.</span>
+      </div>
+    </div>
+
+    <div class="oneliners">
+      <h2>Per-ATS one-liners (one platform at a time = better coverage)</h2>
+      <div id="ols"></div>
+    </div>
+
+    <p class="hint">Boundaries unchanged: this only builds a Google URL and opens it — no scraping,
+      no CAPTCHA bypass. Reading a token: <code>jobs.lever.co/<b>acme</b></code>,
+      <code>boards.greenhouse.io/<b>acme</b></code>, <code>jobs.ashbyhq.com/<b>acme</b></code>.</p>
+  </div>
+
+  <script src="dorks.js"></script>
+</body>
+</html>

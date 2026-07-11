@@ -523,6 +523,218 @@ var SITES = {
     }
   },
 
+  greenhouse_co: {
+    name: "Greenhouse (company)",
+    match: null,
+    note: "Per-company ATS. Enter a board token (from boards.greenhouse.io/<token> or a jobs URL). Runs from any tab.",
+    fields: [
+      { k: "company",  label: "Board token (from careers URL)", t: "text", def: "", ph: "stripe" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
+      { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
+    ],
+    scrape: async function (cfg) {
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
+      const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
+      const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      if (!cfg.company) { say("⚠ Enter a board token (boards.greenhouse.io/<token>)."); return []; }
+      const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
+      const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
+      say(`Fetching Greenhouse board "${cfg.company}"…`);
+      let data;
+      try {
+        const r = await fetch(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(cfg.company)}/jobs`, { headers: { Accept: "application/json" } });
+        if (r.status !== 200) { say(`HTTP ${r.status} — check the board token.`); return []; }
+        data = await r.json();
+      } catch (e) { say("request failed — is the token correct?"); return []; }
+      const matches = [];
+      for (const j of (data.jobs || [])) {
+        const title = j.title || ""; if (!title) continue;
+        if (kwRx && !kwRx.test(title)) continue;
+        if (exRx && exRx.test(title)) continue;
+        const rec = { title, company: j.company_name || tc(cfg.company), location: (j.location && j.location.name) || "", posted: (j.updated_at || "").slice(0, 10), url: j.absolute_url || "" };
+        if (!rec.url) continue;
+        matches.push(rec); report(rec);
+        if (matches.length >= cfg.maxJobs) break;
+      }
+      say(`✅ ${matches.length} match(es) from ${cfg.company}.`);
+      return matches;
+    }
+  },
+
+  lever_co: {
+    name: "Lever (company)",
+    match: null,
+    note: "Per-company ATS. Enter a company token (from jobs.lever.co/<token>). Runs from any tab.",
+    fields: [
+      { k: "company",  label: "Company token (from careers URL)", t: "text", def: "", ph: "spotify" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
+      { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
+    ],
+    scrape: async function (cfg) {
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
+      const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
+      const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      if (!cfg.company) { say("⚠ Enter a company token (jobs.lever.co/<token>)."); return []; }
+      const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
+      const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
+      say(`Fetching Lever postings "${cfg.company}"…`);
+      let data;
+      try {
+        const r = await fetch(`https://api.lever.co/v0/postings/${encodeURIComponent(cfg.company)}?mode=json`, { headers: { Accept: "application/json" } });
+        if (r.status !== 200) { say(`HTTP ${r.status} — check the company token.`); return []; }
+        data = await r.json();
+      } catch (e) { say("request failed — is the token correct?"); return []; }
+      const matches = [];
+      for (const j of (Array.isArray(data) ? data : [])) {
+        const title = j.text || ""; if (!title) continue;
+        const c = j.categories || {};
+        if (kwRx && !kwRx.test(title + " " + (c.team || ""))) continue;
+        if (exRx && exRx.test(title)) continue;
+        let loc = c.location || (c.allLocations || []).join(", ");
+        if (/remote/i.test(j.workplaceType || "") && !/remote/i.test(loc)) loc = (loc ? loc + " " : "") + "(remote)";
+        const rec = { title, company: tc(cfg.company), location: loc, department: c.department || c.team || "", posted: (j.createdAt ? new Date(j.createdAt).toISOString().slice(0, 10) : ""), url: j.hostedUrl || j.applyUrl || "" };
+        if (!rec.url) continue;
+        matches.push(rec); report(rec);
+        if (matches.length >= cfg.maxJobs) break;
+      }
+      say(`✅ ${matches.length} match(es) from ${cfg.company}.`);
+      return matches;
+    }
+  },
+
+  ashby_co: {
+    name: "Ashby (company)",
+    match: null,
+    note: "Per-company ATS. Enter a company token (from jobs.ashbyhq.com/<token>). Runs from any tab.",
+    fields: [
+      { k: "company",  label: "Company token (from careers URL)", t: "text", def: "", ph: "openai" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
+      { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
+    ],
+    scrape: async function (cfg) {
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
+      const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
+      const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      if (!cfg.company) { say("⚠ Enter a company token (jobs.ashbyhq.com/<token>)."); return []; }
+      const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
+      const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
+      say(`Fetching Ashby board "${cfg.company}"…`);
+      let data;
+      try {
+        const r = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(cfg.company)}?includeCompensation=true`, { headers: { Accept: "application/json" } });
+        if (r.status !== 200) { say(`HTTP ${r.status} — check the company token.`); return []; }
+        data = await r.json();
+      } catch (e) { say("request failed — is the token correct?"); return []; }
+      const matches = [];
+      for (const j of (data.jobs || [])) {
+        const title = j.title || ""; if (!title) continue;
+        if (kwRx && !kwRx.test(title + " " + (j.department || ""))) continue;
+        if (exRx && exRx.test(title)) continue;
+        const secs = (j.secondaryLocations || []).map(s => s && s.location).filter(Boolean);
+        let loc = [j.location].concat(secs).filter(Boolean).join(" · ");
+        if (j.isRemote && !/remote/i.test(loc)) loc = (loc ? loc + " " : "") + "(remote)";
+        const comp = j.compensation && j.compensation.compensationTierSummary || "";
+        const rec = { title, company: tc(cfg.company), location: loc, salary: comp, department: j.department || j.team || "", posted: (j.publishedAt || "").slice(0, 10), url: j.jobUrl || j.applyUrl || "" };
+        if (!rec.url) continue;
+        matches.push(rec); report(rec);
+        if (matches.length >= cfg.maxJobs) break;
+      }
+      say(`✅ ${matches.length} match(es) from ${cfg.company}.`);
+      return matches;
+    }
+  },
+
+  workable_co: {
+    name: "Workable (company)",
+    match: null,
+    note: "Per-company ATS. Enter a subdomain token (from apply.workable.com/<token>). Runs from any tab.",
+    fields: [
+      { k: "company",  label: "Account token (from careers URL)", t: "text", def: "", ph: "acme" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
+      { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
+    ],
+    scrape: async function (cfg) {
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
+      const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
+      const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      if (!cfg.company) { say("⚠ Enter an account token (apply.workable.com/<token>)."); return []; }
+      const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
+      const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
+      say(`Fetching Workable account "${cfg.company}"…`);
+      let data;
+      try {
+        const r = await fetch(`https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(cfg.company)}`, { headers: { Accept: "application/json" } });
+        if (r.status !== 200) { say(`HTTP ${r.status} — check the account token.`); return []; }
+        data = await r.json();
+      } catch (e) { say("request failed — is the token correct?"); return []; }
+      const matches = [];
+      for (const j of (data.jobs || [])) {
+        const title = j.title || j.full_title || ""; if (!title) continue;
+        if (kwRx && !kwRx.test(title + " " + (j.department || ""))) continue;
+        if (exRx && exRx.test(title)) continue;
+        const L = j.location || {};
+        let loc = [L.city, L.region, L.country].filter(Boolean).join(", ") || L.location_str || "";
+        if (L.telecommuting && !/remote/i.test(loc)) loc = (loc ? loc + " " : "") + "(remote)";
+        const url = j.shortlink || j.application_url || (j.shortcode ? `https://apply.workable.com/${cfg.company}/j/${j.shortcode}/` : "");
+        const rec = { title, company: data.name ? tc(data.name) : tc(cfg.company), location: loc, department: j.department || "", posted: (j.published_on || j.created_at || "").slice(0, 10), url };
+        if (!rec.url) continue;
+        matches.push(rec); report(rec);
+        if (matches.length >= cfg.maxJobs) break;
+      }
+      say(`✅ ${matches.length} match(es) from ${cfg.company}.`);
+      return matches;
+    }
+  },
+
+  recruitee_co: {
+    name: "Recruitee (company)",
+    match: null,
+    note: "Per-company ATS. Enter a subdomain token (from <token>.recruitee.com). Runs from any tab.",
+    fields: [
+      { k: "company",  label: "Subdomain token (from careers URL)", t: "text", def: "", ph: "acme" },
+      { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, flutter", ph: "android, kotlin" },
+      { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, manager" },
+      { k: "maxJobs",  label: "Max jobs", t: "num", def: 400 }
+    ],
+    scrape: async function (cfg) {
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
+      const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
+      const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      if (!cfg.company) { say("⚠ Enter a subdomain token (<token>.recruitee.com)."); return []; }
+      const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
+      const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
+      say(`Fetching Recruitee "${cfg.company}"…`);
+      let data;
+      try {
+        const r = await fetch(`https://${encodeURIComponent(cfg.company)}.recruitee.com/api/offers/`, { headers: { Accept: "application/json" } });
+        if (r.status !== 200) { say(`HTTP ${r.status} — check the subdomain token.`); return []; }
+        data = await r.json();
+      } catch (e) { say("request failed — is the token correct?"); return []; }
+      const matches = [];
+      for (const j of (data.offers || [])) {
+        const title = j.title || ""; if (!title) continue;
+        if (kwRx && !kwRx.test(title + " " + (j.department || ""))) continue;
+        if (exRx && exRx.test(title)) continue;
+        let loc = j.location || [j.city, j.country].filter(Boolean).join(", ");
+        const rec = { title, company: tc(cfg.company), location: loc, department: j.department || "", posted: (j.published_at || j.created_at || "").slice(0, 10), url: j.careers_url || j.careers_apply_url || "" };
+        if (!rec.url) continue;
+        matches.push(rec); report(rec);
+        if (matches.length >= cfg.maxJobs) break;
+      }
+      say(`✅ ${matches.length} match(es) from ${cfg.company}.`);
+      return matches;
+    }
+  },
+
   shine: {
     name: "Shine",
     match: /(^|\.)shine\.com$/i,
@@ -796,7 +1008,8 @@ var SITES = {
 // Order shown in the popup dropdown.
 var SITE_ORDER = [
   "ziprecruiter", "linkedin", "naukri", "wellfound", "cutshort", "instahyre",
-  "workatastartup", "smartrecruiters", "shine", "indeed", "glassdoor", "foundit"
+  "workatastartup", "smartrecruiters", "greenhouse_co", "lever_co", "ashby_co",
+  "workable_co", "recruitee_co", "shine", "indeed", "glassdoor", "foundit"
 ];
 
 // ---- Aggregation metadata (used by the "Search all" results page) ----
@@ -817,6 +1030,11 @@ var AGG = {
   instahyre:      { needsLogin: true,  domain: "instahyre.com",      loginUrl: "https://www.instahyre.com/login/",    url: s => `https://www.instahyre.com/search-jobs/` },
   workatastartup: { needsLogin: true,  dom: true, domain: "workatastartup.com", loginUrl: "https://www.workatastartup.com/",     url: s => `https://www.workatastartup.com/jobs` },
   smartrecruiters:{ noAgg: true },
+  greenhouse_co:  { noAgg: true },
+  lever_co:       { noAgg: true },
+  ashby_co:       { noAgg: true },
+  workable_co:    { noAgg: true },
+  recruitee_co:   { noAgg: true },
   shine:          { needsLogin: false, url: s => `https://www.shine.com/job-search/${_slug(s.role) || "jobs"}-jobs` },
   indeed:         { needsLogin: false, url: s => `https://in.indeed.com/jobs?q=${encodeURIComponent(s.role)}&l=${encodeURIComponent(s.loc || "")}` },
   glassdoor:      { needsLogin: false, dom: true, url: s => `https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword=${encodeURIComponent(s.role)}` },

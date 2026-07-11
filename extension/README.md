@@ -35,6 +35,25 @@ Click **🔎 Search ALL providers →** at the top of the popup to open the
    all its **Sources**), with **NEW** badges for jobs unseen since your last run,
    clickable title links, and **⬇ Download CSV**.
 
+### Company ATS sweep (Greenhouse / Lever / Ashby)
+
+Below the job-board providers is a **Company ATS · direct** group. These sweep a
+curated list of companies' **public career APIs** directly — no login, no tabs,
+no scraping. Each company's published jobs come straight from its applicant
+tracking system (Greenhouse/Lever/Ashby), get keyword-filtered to your role, and
+merge into the same de-duplicated results table as everything else. This surfaces
+roles that never reach the aggregators. Tokens are verified to return live jobs;
+extend the seed lists in `ats.js` (the token is the path in a company's careers
+URL) — the Dork builder helps you discover more.
+
+### ⚡ Google-dork builder
+
+The **⚡ Dork builder** link (top of the ATS group) opens a page that builds a
+Google search string targeting company ATS platforms (`site:boards.greenhouse.io`
+etc.), with role synonyms, skills, locations, seniority, and aggregator
+exclusion. Hit **Open in Google**, then read each result's company token from its
+URL and add it to the sweep. It only opens a Google URL — no scraping.
+
 ### Filtering & sorting the results
 
 Once results are in, a sticky toolbar lets you narrow them **without re-running**:
@@ -68,6 +87,11 @@ and they never bypass a CAPTCHA.
 2. Click the **🔎 Job Finder** toolbar icon.
 3. The popup **auto-detects the site** from your active tab. Adjust the Site
    dropdown if needed, set **Keywords / Exclude / limits**, then **▶ Start**.
+
+The dropdown also lists **per-company ATS providers** (SmartRecruiters,
+Greenhouse, Lever, Ashby, Workable, Recruitee) that run from *any* tab: enter a
+company's board token (the path in its careers URL, e.g. `stripe` from
+`boards.greenhouse.io/stripe`) to pull that one company's jobs.
 4. Matches stream in live (new-since-last-run ones get a **NEW** badge). When it
    finishes, click **⬇ CSV** to download.
 

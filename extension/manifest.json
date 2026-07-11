@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Job Finder",
-  "version": "1.0.0",
-  "description": "Search developer jobs across 12 boards from one popup — filter by keywords, see only-new-since-last-run, export CSV.",
+  "version": "1.1.0",
+  "description": "Search developer jobs across 12 boards + company ATS (Greenhouse/Lever/Ashby) from one popup — token-sweep, Google-dork builder, filters, only-new, CSV.",
   "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads", "cookies"],
   "host_permissions": [
     "https://*.ziprecruiter.com/*",
@@ -18,7 +18,15 @@
     "https://*.indeed.com/*",
     "https://*.glassdoor.co.in/*",
     "https://*.glassdoor.com/*",
-    "https://*.foundit.in/*"
+    "https://*.foundit.in/*",
+    "https://boards-api.greenhouse.io/*",
+    "https://boards.greenhouse.io/*",
+    "https://api.lever.co/*",
+    "https://jobs.lever.co/*",
+    "https://api.ashbyhq.com/*",
+    "https://jobs.ashbyhq.com/*",
+    "https://apply.workable.com/*",
+    "https://*.recruitee.com/*"
   ],
   "action": {
     "default_title": "Job Finder",

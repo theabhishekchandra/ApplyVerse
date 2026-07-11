@@ -62,8 +62,11 @@ input[type="text"], select {
 }
 input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,255,.2); }
 
+.ats-note { font-size: 10.5px; color: var(--muted); line-height: 1.45; margin: -2px 0 9px; opacity: .85; }
+
 /* provider items */
 .providers { display: flex; flex-direction: column; gap: 7px; }
+.prov .seedn { font-size: 9.5px; color: var(--muted); background: rgba(255,255,255,.05); border: 1px solid var(--line-2); border-radius: 20px; padding: 1px 7px; }
 .prov {
   display: flex; align-items: center; gap: 10px; padding: 8px 10px;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;

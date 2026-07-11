@@ -10,6 +10,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const norm = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 const jobKey = j => norm(j.title) + "|" + norm(j.company);
 const escHtml = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// provider display name — works for both DOM-scrape sites and ATS sweep pseudo-providers
+const nameOf = id => (provState[id] && provState[id].name) || (SITES[id] ? SITES[id].name : id);
 
 let running = false;
 let merged = new Map();       // jobKey -> {job, sources:Set, isNew}
@@ -88,10 +90,32 @@ for (const id of SITE_ORDER) {
   row.append(cb, check, av, name, ps, dot);
   if (!noAgg) row.onclick = e => { if (e.target.tagName === "BUTTON") return; cb.checked = !cb.checked; row.classList.toggle("on", cb.checked); };
   providersEl.appendChild(row);
-  provState[id] = { cb, dot, ps, row };
+  provState[id] = { cb, dot, ps, row, name: SITES[id].name };
 }
-function syncProvClasses() { for (const id of AGG_IDS) provState[id].row.classList.toggle("on", provState[id].cb.checked); }
-$("selAll").addEventListener("change", e => { for (const id of AGG_IDS) provState[id].cb.checked = e.target.checked; syncProvClasses(); });
+
+// ---------- ATS sweep pseudo-providers (Greenhouse/Lever/Ashby …) ----------
+// Each sweeps a curated seed list of company career APIs directly (no tabs).
+const atsProvidersEl = $("atsProviders");
+const ATS_IDS = Object.keys(ATS_PLATFORMS).filter(k => (ATS_SEED[k] || []).length).map(k => "ats:" + k);
+for (const id of ATS_IDS) {
+  const key = id.slice(4), def = ATS_PLATFORMS[key], seedN = (ATS_SEED[key] || []).length;
+  const label = def.name;
+  const row = document.createElement("div"); row.className = "prov";
+  const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "p_" + id;
+  const check = document.createElement("span"); check.className = "check";
+  const av = document.createElement("div"); av.className = "pa"; av.textContent = initials(label); av.style.background = avatarColor(id);
+  const name = document.createElement("span"); name.className = "name"; name.textContent = label;
+  const seed = document.createElement("span"); seed.className = "seedn"; seed.textContent = seedN + " cos";
+  const dot = document.createElement("span"); dot.className = "dot ok";
+  row.append(cb, check, av, name, seed, dot);
+  row.onclick = e => { if (e.target.tagName === "BUTTON") return; cb.checked = !cb.checked; row.classList.toggle("on", cb.checked); };
+  atsProvidersEl.appendChild(row);
+  provState[id] = { cb, dot, ps: seed, row, name: label + " · ATS", ats: true, platform: key };
+}
+
+const SELECTABLE = [...AGG_IDS, ...ATS_IDS];
+function syncProvClasses() { for (const id of SELECTABLE) provState[id].row.classList.toggle("on", provState[id].cb.checked); }
+$("selAll").addEventListener("change", e => { for (const id of SELECTABLE) provState[id].cb.checked = e.target.checked; syncProvClasses(); });
 
 // ---------- login pre-check ----------
 async function checkLogin(id) {
@@ -108,7 +132,7 @@ function setLight(id, cls, text) {
   s.dot.className = "dot " + cls;
   s.ps.textContent = text || "";
   const ex = s.row.querySelector(".loginbtn"); if (ex) ex.remove();
-  if (cls === "out" && AGG[id].needsLogin) {
+  if (cls === "out" && AGG[id] && AGG[id].needsLogin) {
     const b = document.createElement("button"); b.className = "loginbtn"; b.textContent = "Log in";
     b.onclick = e => { e.stopPropagation(); chrome.tabs.create({ url: AGG[id].loginUrl || AGG[id].url({ role: "", loc: "" }), active: true }); };
     s.ps.after(b);
@@ -123,6 +147,7 @@ async function recheckLogins() {
   }));
 }
 $("recheck").addEventListener("click", recheckLogins);
+$("dork").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("dorks.html"), active: true }));
 
 // ---------- per-provider cfg ----------
 function buildCfg(id, shared) {
@@ -167,7 +192,7 @@ function upsert(job, sourceId) {
   let entry = merged.get(k);
   if (!entry) { entry = { job, sources: new Set(), isNew: !seenAtStart.has(job.url) }; merged.set(k, entry); }
   else { for (const f of ["company", "location", "salary", "exp", "posted", "date"]) if (!entry.job[f] && job[f]) entry.job[f] = job[f]; }
-  entry.sources.add(SITES[sourceId].name);
+  entry.sources.add(nameOf(sourceId));
   scheduleRender();
 }
 function scheduleRender() { if (!renderTimer) renderTimer = setTimeout(() => { renderTimer = null; render(); }, 180); }
@@ -286,7 +311,7 @@ function rowFor(entry) {
 chrome.runtime.onMessage.addListener(msg => {
   if (!running || !msg) return;
   if (msg.type === "job" && currentProvider) upsert(msg.job, currentProvider);
-  else if (msg.type === "status" && currentProvider) statusEl.textContent = `[${SITES[currentProvider].name}] ${msg.text}`;
+  else if (msg.type === "status" && currentProvider) statusEl.textContent = `[${nameOf(currentProvider)}] ${msg.text}`;
 });
 
 // filter controls
@@ -296,12 +321,29 @@ chrome.runtime.onMessage.addListener(msg => {
 });
 $("onlyNew").addEventListener("change", render);
 
+// ---------- ATS sweep (direct fetch, no tabs) ----------
+async function sweepAts(id, shared) {
+  const platform = provState[id].platform;
+  const m = atsMatchers(shared.role, shared.keywords, shared.exclude);
+  setLight(id, "run", "sweeping…");
+  statusEl.textContent = `[${nameOf(id)}] sweeping company APIs…`;
+  const r = await atsSweep(platform, {
+    matchRx: m.matchRx, exRx: m.exRx,
+    onJob: j => upsert(j, id),
+    onProgress: (done, total, found) => {
+      setLight(id, "run", `${done}/${total} · ${found}`);
+      statusEl.textContent = `[${nameOf(id)}] ${done}/${total} companies · ${found} match(es)`;
+    }
+  });
+  setLight(id, "done", `${r.found} found`);
+}
+
 // ---------- run ----------
 async function searchAll() {
   if (running) return;
   const shared = { role: $("role").value.trim(), loc: $("loc").value.trim(), keywords: $("keywords").value, exclude: $("exclude").value };
   if (!shared.role) { statusEl.textContent = "Enter a role / profile first."; return; }
-  const selected = AGG_IDS.filter(id => provState[id].cb.checked);
+  const selected = SELECTABLE.filter(id => provState[id].cb.checked);
   if (!selected.length) { statusEl.textContent = "Select at least one provider."; return; }
 
   seenAtStart = new Set((await chrome.storage.local.get("agg_seen")).agg_seen || []);
@@ -310,6 +352,7 @@ async function searchAll() {
 
   for (const id of selected) {
     currentProvider = id;
+    if (provState[id].ats) { await sweepAts(id, shared); continue; }
     setLight(id, "run", "running…");
     statusEl.textContent = `[${SITES[id].name}] opening…`;
     let tab = null, keepTab = false;
@@ -364,7 +407,7 @@ $("csv").addEventListener("click", () => {
 
 // ---------- init ----------
 (async function init() {
-  for (const id of ["linkedin", "shine", "cutshort", "foundit"]) if (provState[id]) provState[id].cb.checked = true;
+  for (const id of ["linkedin", "shine", "cutshort", "foundit", "ats:greenhouse", "ats:ashby"]) if (provState[id]) provState[id].cb.checked = true;
   syncProvClasses();
   $("role").value = "android developer";
   $("keywords").value = "android, kotlin, jetpack, flutter";
