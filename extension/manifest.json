@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Job Finder",
-  "version": "1.1.0",
-  "description": "Search developer jobs across 12 boards + company ATS (Greenhouse/Lever/Ashby) from one popup — token-sweep, Google-dork builder, filters, only-new, CSV.",
+  "version": "1.2.0",
+  "description": "Aggregate developer jobs across 12 boards + company ATS (Greenhouse/Lever/Ashby/Personio) — token-sweep, Google-dork builder, scheduled watch, fit-scoring, apply-tracking, export.",
   "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads", "cookies", "alarms", "notifications"],
   "host_permissions": [
     "https://*.ziprecruiter.com/*",

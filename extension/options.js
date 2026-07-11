@@ -14,8 +14,28 @@ async function load() {
   renderPlatforms();
   renderProfiles();
   renderLastRun();
+  renderDiscovered();
   renderWatched();
 }
+
+// ---------- discovered tokens ----------
+async function renderDiscovered() {
+  const disc = await jfGetDiscovered();
+  const el = $("discovered"); el.innerHTML = "";
+  const keys = Object.keys(disc).filter(k => (disc[k] || []).length);
+  if (!keys.length) { el.innerHTML = '<div class="wempty">None yet. Use the <b>⚡ Dork builder → 🌾 Harvest tokens</b> to add companies to the sweep.</div>'; return; }
+  keys.forEach(k => {
+    const name = (ATS_PLATFORMS[k] && ATS_PLATFORMS[k].name) || k;
+    const row = document.createElement("div"); row.className = "disc-row";
+    const h = document.createElement("div"); h.className = "disc-h"; h.innerHTML = `<b>${name}</b> <span class="dim">${disc[k].length}</span>`;
+    const toks = document.createElement("div"); toks.className = "disc-toks"; toks.textContent = disc[k].join(", ");
+    row.append(h, toks); el.appendChild(row);
+  });
+}
+$("clearDiscovered").addEventListener("click", async () => {
+  await chrome.storage.local.set({ [JF_KEYS.discovered]: {} });
+  renderDiscovered();
+});
 
 // ---------- settings ----------
 function renderSettings() {

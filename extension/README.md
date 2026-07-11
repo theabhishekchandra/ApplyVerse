@@ -102,7 +102,14 @@ Once results are in, a sticky toolbar lets you narrow them **without re-running*
   export includes **Match%** and **Status** columns.
 
 Filters are **client-side** over the merged results, so they work uniformly
-across providers. **CSV export respects the current filters.**
+across providers.
+
+### Export
+
+The **⬇ Export ▾** menu writes the **currently filtered/sorted** results as:
+**CSV** (spreadsheet), **JSON** (structured, all fields), **Markdown** (paste or
+import into **Notion** — titles become links), or **Copy for Sheets / Excel**
+(TSV to the clipboard). Match% and apply-status are included.
 
 Providers that need login are skipped (with a prompt) until you're signed in.
 Bot-walled sites (Indeed, Glassdoor) may return little/nothing — that's expected,

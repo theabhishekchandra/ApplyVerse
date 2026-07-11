@@ -421,7 +421,7 @@ async function searchAll() {
 
   seenAtStart = new Set((await chrome.storage.local.get("agg_seen")).agg_seen || []);
   merged = new Map(); activeSources = null; rowsEl.innerHTML = ""; countEl.textContent = "";
-  running = true; $("search").disabled = true; $("csv").disabled = true; $("search").textContent = "…searching";
+  running = true; $("search").disabled = true; $("exportBtn").disabled = true; $("search").textContent = "…searching";
 
   for (const id of selected) {
     currentProvider = id;
@@ -463,25 +463,55 @@ async function searchAll() {
 
   const newCount = [...merged.values()].filter(e => e.isNew).length;
   statusEl.textContent = `✅ Done — ${merged.size} job(s), ${newCount} new.`;
-  $("csv").disabled = merged.size === 0;
+  $("exportBtn").disabled = merged.size === 0;
   hasRun = true;
   render();
 }
 $("search").addEventListener("click", searchAll);
 
-// ---------- CSV (respects current filters) ----------
-$("csv").addEventListener("click", () => {
+// ---------- Export (CSV / JSON / Markdown / TSV-clipboard), respects filters ----------
+function exportEntries() {
   const f = currentFilters();
   const terms = matchTerms();
   for (const e of merged.values()) e._fit = fitScore(e.job, terms);
-  const entries = sortEntries([...merged.values()].filter(e => passes(e, f)), f.sort);
+  return sortEntries([...merged.values()].filter(e => passes(e, f)), f.sort);
+}
+function exportRow(e) {
+  const j = e.job;
+  return { Title: j.title || "", Company: j.company || "", Location: j.location || j.locations || "", Salary: j.salary || "", Experience: j.exp || "", Posted: j.posted || j.date || "", "Match%": e._fit || 0, Status: track[jobKey(j)] || "", Sources: [...e.sources].join(" | "), URL: j.url || "" };
+}
+const COLS = ["Title", "Company", "Location", "Salary", "Experience", "Posted", "Match%", "Status", "Sources", "URL"];
+function download(filename, mime, text) {
+  chrome.downloads.download({ url: `data:${mime};charset=utf-8,` + encodeURIComponent(text), filename, saveAs: false });
+}
+function doExport(fmt) {
+  const entries = exportEntries();
   if (!entries.length) { statusEl.textContent = "Nothing to export."; return; }
-  const q = s => `"${String(s == null ? "" : s).replace(/"/g, '""')}"`;
-  const head = "Title,Company,Location,Salary,Experience,Posted,Match%,Status,Sources,URL";
-  const body = entries.map(e => { const j = e.job; return [q(j.title), q(j.company), q(j.location || j.locations), q(j.salary), q(j.exp), q(j.posted || j.date), q(e._fit || 0), q(track[jobKey(j)] || ""), q([...e.sources].join(" | ")), q(j.url)].join(","); }).join("\n");
-  const url = "data:text/csv;charset=utf-8," + encodeURIComponent(head + "\n" + body);
-  chrome.downloads.download({ url, filename: `jobfinder-all-${entries.length}.csv`, saveAs: false });
-});
+  const rows = entries.map(exportRow);
+  const stamp = entries.length;
+  if (fmt === "json") {
+    download(`jobfinder-${stamp}.json`, "application/json", JSON.stringify(rows, null, 2));
+  } else if (fmt === "csv") {
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const text = [COLS.join(",")].concat(rows.map(r => COLS.map(c => q(r[c])).join(","))).join("\n");
+    download(`jobfinder-${stamp}.csv`, "text/csv", text);
+  } else if (fmt === "md") {
+    const esc = s => String(s).replace(/\|/g, "\\|");
+    const head = `| ${COLS.join(" | ")} |\n| ${COLS.map(() => "---").join(" | ")} |`;
+    const body = rows.map(r => "| " + COLS.map(c => c === "Title" && r.URL ? `[${esc(r.Title)}](${r.URL})` : esc(r[c])).join(" | ") + " |").join("\n");
+    download(`jobfinder-${stamp}.md`, "text/markdown", `# Job Finder — ${stamp} jobs\n\n${head}\n${body}\n`);
+  } else if (fmt === "tsv") {
+    const text = [COLS.join("\t")].concat(rows.map(r => COLS.map(c => String(r[c]).replace(/\t/g, " ")).join("\t"))).join("\n");
+    navigator.clipboard.writeText(text).then(
+      () => statusEl.textContent = `✅ Copied ${stamp} rows (TSV) — paste into Google Sheets or Excel.`,
+      () => statusEl.textContent = "Clipboard blocked — try CSV export instead."
+    );
+  }
+  $("exportMenu").hidden = true;
+}
+$("exportBtn").addEventListener("click", e => { e.stopPropagation(); $("exportMenu").hidden = !$("exportMenu").hidden; });
+$("exportMenu").querySelectorAll("button").forEach(b => b.addEventListener("click", () => doExport(b.dataset.fmt)));
+document.addEventListener("click", e => { if (!e.target.closest(".export-wrap")) $("exportMenu").hidden = true; });
 
 // ---------- saved profiles ----------
 async function loadProfilesDropdown() {
@@ -524,7 +554,7 @@ async function loadWatched() {
   }
   hasRun = true;
   document.querySelector("h1").firstChild.textContent = "Watched results ";
-  $("csv").disabled = merged.size === 0;
+  $("exportBtn").disabled = merged.size === 0;
   render();
   statusEl.textContent = list.length ? `${list.length} job(s) from the background watcher.` : "No watched results yet — enable the watcher in ⚙ settings.";
 }

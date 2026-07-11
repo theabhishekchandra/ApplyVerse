@@ -67,7 +67,15 @@
           <h1>Results <span id="count" class="count"></span></h1>
           <div class="topbar-actions">
             <label class="mini-chk"><input type="checkbox" id="onlyNew"> only new</label>
-            <button id="csv" class="ghost" disabled>⬇ Export CSV</button>
+            <div class="export-wrap">
+              <button id="exportBtn" class="ghost" disabled>⬇ Export ▾</button>
+              <div id="exportMenu" class="export-menu" hidden>
+                <button data-fmt="csv">CSV (.csv)</button>
+                <button data-fmt="json">JSON (.json)</button>
+                <button data-fmt="md">Markdown — Notion (.md)</button>
+                <button data-fmt="tsv">Copy for Sheets / Excel</button>
+              </div>
+            </div>
           </div>
         </div>
 
