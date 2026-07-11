@@ -189,7 +189,7 @@ async function recheckLogins() {
   }));
 }
 $("recheck").addEventListener("click", recheckLogins);
-$("dork").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("dorks.html"), active: true }));
+// #dork is a plain <a href="dorks.html"> — it navigates natively, no JS needed.
 
 // ---------- per-provider cfg ----------
 function buildCfg(id, shared) {
@@ -573,6 +573,13 @@ async function loadWatched() {
   await loadHealth();
   await loadProfilesDropdown();
   const watched = new URLSearchParams(location.search).get("watched");
+  // Surface a "📥 Collected jobs (N)" shortcut to the watched view whenever the
+  // background/dork pool has anything — but not when we're already in it.
+  if (!watched) {
+    const nColl = (await jfGet(JF_KEYS.bgResults, [])).length;
+    const cl = $("collectedLink");
+    if (cl && nColl) { cl.textContent = `📥 Collected jobs (${nColl})`; cl.hidden = false; }
+  }
   if (watched) { await loadWatched(); return; }
 
   for (const id of ["linkedin", "shine", "cutshort", "foundit", "ats:greenhouse", "ats:ashby"]) if (provState[id]) provState[id].cb.checked = true;

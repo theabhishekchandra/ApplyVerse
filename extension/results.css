@@ -71,6 +71,22 @@ input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow
 
 .ats-note { font-size: 10.5px; color: var(--muted); line-height: 1.45; margin: -2px 0 9px; opacity: .85; }
 
+/* Dork builder — prominent entry point (its Auto-collect is the headline feature) */
+.dork-cta {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  margin: 0 0 12px; padding: 11px 13px; cursor: pointer; text-decoration: none;
+  border: 1px solid rgba(124,92,255,.45); border-radius: 12px;
+  background: linear-gradient(135deg, rgba(124,92,255,.20), rgba(62,166,255,.12));
+  box-shadow: 0 6px 18px rgba(124,92,255,.20);
+  transition: transform .1s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.dork-cta:hover { transform: translateY(-1px); border-color: rgba(124,92,255,.75); box-shadow: 0 10px 26px rgba(124,92,255,.34); }
+.dork-cta:active { transform: translateY(0); }
+.dork-cta-ic { font-size: 18px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(124,92,255,.6)); }
+.dork-cta-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dork-cta-tx b { font-size: 12.5px; font-weight: 800; color: var(--ink); }
+.dork-cta-tx small { font-size: 10.5px; color: var(--ink-2); opacity: .9; line-height: 1.35; }
+
 /* provider items */
 .providers { display: flex; flex-direction: column; gap: 7px; }
 .prov .seedn { font-size: 9.5px; color: var(--muted); background: rgba(255,255,255,.05); border: 1px solid var(--line-2); border-radius: 20px; padding: 1px 7px; }

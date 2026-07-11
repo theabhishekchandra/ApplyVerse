@@ -44,11 +44,15 @@
         <div class="group">
           <div class="group-head">
             <span class="group-title">Company ATS · direct</span>
-            <span class="group-tools">
-              <button id="dork" class="linkbtn">⚡ Dork builder</button>
-            </span>
           </div>
           <div class="ats-note">Sweeps curated companies' public career APIs — no login, no tabs.</div>
+          <a id="dork" class="dork-cta" href="dorks.html" title="Open the Dork builder — find companies Google indexed and auto-collect their jobs">
+            <span class="dork-cta-ic">⚡</span>
+            <span class="dork-cta-tx">
+              <b>Dork builder + Auto-collect</b>
+              <small>Find companies Google indexed → collect in one click →</small>
+            </span>
+          </a>
           <div id="atsProviders" class="providers"></div>
         </div>
       </div>
@@ -56,6 +60,7 @@
       <div class="rail-foot">
         <button id="search" class="primary block">▶ Search selected</button>
         <div id="status" class="status"></div>
+        <a class="settings-link" id="collectedLink" href="results.html?watched=1" hidden>📥 Collected jobs</a>
         <a class="settings-link" id="settingsLink" href="options.html">⚙ Automation &amp; settings</a>
       </div>
     </aside>

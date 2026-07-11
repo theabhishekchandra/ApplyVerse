@@ -68,9 +68,13 @@ function _atsExp(t) {
   if (m) return `${m[1]}+ yrs`;
   return "";
 }
-// attach jd snippet + backfill salary/exp from any available description text
-function _atsEnrich(rec, descText) {
-  const jd = _atsText(descText);
+// Stash the raw description on the record; actual enrichment (HTML-strip +
+// salary/exp mining) is deferred to _atsApplyEnrich AFTER filtering, so a huge
+// board only enriches its handful of matches — not all thousands of postings.
+function _atsEnrich(rec, descText) { rec._desc = descText || ""; return rec; }
+function _atsApplyEnrich(rec) {
+  const jd = _atsText(rec._desc);
+  delete rec._desc;
   if (jd) {
     rec.jd = jd.slice(0, 400);
     if (!rec.salary) rec.salary = _atsSalary(jd);
@@ -278,6 +282,10 @@ async function atsFetchCompany(platform, token, opts) {
     });
   }
   if (opts.perCompany) jobs = jobs.slice(0, opts.perCompany);
+  // Enrich only the survivors (JD strip + salary/exp mining). Doing this AFTER
+  // all filtering means a 4,600-posting aggregator board enriches its ~60
+  // matches, not all 4,600 — full coverage, a fraction of the work.
+  for (const j of jobs) _atsApplyEnrich(j);
   return { ok: true, status: 200, jobs };
 }
 
