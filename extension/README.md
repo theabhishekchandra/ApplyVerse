@@ -35,6 +35,24 @@ Click **🔎 Search ALL providers →** at the top of the popup to open the
    all its **Sources**), with **NEW** badges for jobs unseen since your last run,
    clickable title links, and **⬇ Download CSV**.
 
+### Filtering & sorting the results
+
+Once results are in, a sticky toolbar lets you narrow them **without re-running**:
+
+- **Text filter** — live match on title / company.
+- **Experience** — Fresher (0–1) / Junior (1–3) / Mid (3–6) / Senior (6+),
+  inferred from each job's experience field (e.g. "2–4 yrs") and title cues
+  (intern, junior, senior, lead…).
+- **Freshness** — past 24h / 3 days / week / month, from each job's posted date.
+- **Work mode** — Remote / Hybrid / On-site.
+- **Sort** — New first, Newest posted, Company A–Z, Title A–Z, Salary (high→low).
+- **Source chips** — click to show/hide individual providers in the table.
+
+Filters are **client-side** over the merged results, so they work uniformly
+across providers. Jobs that simply **don't carry** a given field (no experience
+or date info) are **kept**, not hidden — a filter only removes jobs that clearly
+don't match. **CSV export respects the current filters.**
+
 Providers that need login are skipped (with a prompt) until you're signed in.
 Bot-walled sites (Indeed, Glassdoor) may return little/nothing — that's expected,
 and they never bypass a CAPTCHA.

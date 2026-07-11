@@ -7,7 +7,8 @@
 </head>
 <body>
   <header>
-    <span class="brand">🔎 Job Finder — Search all providers</span>
+    <span class="brand">🔎 Job Finder</span>
+    <span class="sub">search all providers</span>
     <span id="count" class="count"></span>
   </header>
 
@@ -16,28 +17,72 @@
       <div class="fields">
         <div class="fld"><label>Role / profile</label><input id="role" type="text" placeholder="android developer"></div>
         <div class="fld"><label>Location</label><input id="loc" type="text" placeholder="India"></div>
-        <div class="fld"><label>Keywords (ANY match; blank = all)</label><input id="keywords" type="text" placeholder="android, kotlin, flutter"></div>
+        <div class="fld"><label>Keywords <span class="hint">ANY match · blank = all</span></label><input id="keywords" type="text" placeholder="android, kotlin, flutter"></div>
         <div class="fld"><label>Exclude words</label><input id="exclude" type="text" placeholder="senior, sales"></div>
       </div>
 
       <div class="providers-head">
-        <label class="chk"><input type="checkbox" id="selAll"> <b>Select all providers</b></label>
-        <label class="chk"><input type="checkbox" id="onlyNew"> Only new since last run</label>
+        <span class="ph-label">Providers</span>
+        <label class="chk"><input type="checkbox" id="selAll"> Select all</label>
         <button id="recheck" class="ghost small">↻ Re-check logins</button>
       </div>
       <div id="providers" class="providers"></div>
 
       <div class="actions">
-        <button id="search" class="primary">▶ Search selected providers</button>
-        <button id="csv" class="ghost" disabled>⬇ Download CSV</button>
+        <button id="search" class="primary">▶ Search selected</button>
+        <label class="chk"><input type="checkbox" id="onlyNew"> Only new since last run</label>
+        <button id="csv" class="ghost" disabled>⬇ CSV</button>
         <span id="status" class="status"></span>
       </div>
+    </section>
+
+    <section id="toolbar" class="toolbar" hidden>
+      <input id="fText" type="text" class="search" placeholder="Filter results (title / company)…">
+      <div class="selects">
+        <label>Experience
+          <select id="fExp">
+            <option value="any">Any</option>
+            <option value="fresher">Fresher (0–1 yr)</option>
+            <option value="junior">Junior (1–3 yr)</option>
+            <option value="mid">Mid (3–6 yr)</option>
+            <option value="senior">Senior (6+ yr)</option>
+          </select>
+        </label>
+        <label>Freshness
+          <select id="fFresh">
+            <option value="0">Any time</option>
+            <option value="1">Past 24 hours</option>
+            <option value="3">Past 3 days</option>
+            <option value="7">Past week</option>
+            <option value="30">Past month</option>
+          </select>
+        </label>
+        <label>Work mode
+          <select id="fMode">
+            <option value="any">Any</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="onsite">On-site</option>
+          </select>
+        </label>
+        <label>Sort
+          <select id="fSort">
+            <option value="newfirst">New first</option>
+            <option value="newest">Newest posted</option>
+            <option value="company">Company A–Z</option>
+            <option value="title">Title A–Z</option>
+            <option value="salary">Salary (high→low)</option>
+          </select>
+        </label>
+      </div>
+      <div id="srcChips" class="src-chips"></div>
+      <span id="showing" class="showing"></span>
     </section>
 
     <section class="results">
       <table id="tbl">
         <thead>
-          <tr><th></th><th>Title</th><th>Company</th><th>Location</th><th>Pay / Exp</th><th>Source(s)</th></tr>
+          <tr><th></th><th>Title</th><th>Company</th><th>Location</th><th>Pay / Exp</th><th>Posted</th><th>Source(s)</th></tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
