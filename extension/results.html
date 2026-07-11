@@ -6,89 +6,80 @@
   <link rel="stylesheet" href="results.css">
 </head>
 <body>
-  <header>
-    <span class="brand">🔎 Job Finder</span>
-    <span class="sub">search all providers</span>
-    <span id="count" class="count"></span>
-  </header>
-
-  <main>
-    <section class="panel">
-      <div class="fields">
-        <div class="fld"><label>Role / profile</label><input id="role" type="text" placeholder="android developer"></div>
-        <div class="fld"><label>Location</label><input id="loc" type="text" placeholder="India"></div>
-        <div class="fld"><label>Keywords <span class="hint">ANY match · blank = all</span></label><input id="keywords" type="text" placeholder="android, kotlin, flutter"></div>
-        <div class="fld"><label>Exclude words</label><input id="exclude" type="text" placeholder="senior, sales"></div>
+  <div class="app">
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="logo">🔎</div>
+        <div>
+          <div class="brand">Job Finder</div>
+          <div class="sub">search every board at once</div>
+        </div>
       </div>
 
-      <div class="providers-head">
-        <span class="ph-label">Providers</span>
-        <label class="chk"><input type="checkbox" id="selAll"> Select all</label>
-        <button id="recheck" class="ghost small">↻ Re-check logins</button>
-      </div>
-      <div id="providers" class="providers"></div>
+      <div class="rail-scroll">
+        <div class="group">
+          <div class="fld"><label>Role / profile</label><input id="role" type="text" placeholder="android developer"></div>
+          <div class="fld"><label>Location</label><input id="loc" type="text" placeholder="India"></div>
+          <div class="fld"><label>Keywords <span class="hint">any match</span></label><input id="keywords" type="text" placeholder="android, kotlin, flutter"></div>
+          <div class="fld"><label>Exclude</label><input id="exclude" type="text" placeholder="senior, sales"></div>
+        </div>
 
-      <div class="actions">
-        <button id="search" class="primary">▶ Search selected</button>
-        <label class="chk"><input type="checkbox" id="onlyNew"> Only new since last run</label>
-        <button id="csv" class="ghost" disabled>⬇ CSV</button>
-        <span id="status" class="status"></span>
+        <div class="group">
+          <div class="group-head">
+            <span class="group-title">Providers</span>
+            <span class="group-tools">
+              <label class="mini-chk"><input type="checkbox" id="selAll"> all</label>
+              <button id="recheck" class="linkbtn">↻ logins</button>
+            </span>
+          </div>
+          <div id="providers" class="providers"></div>
+        </div>
       </div>
-    </section>
 
-    <section id="toolbar" class="toolbar" hidden>
-      <input id="fText" type="text" class="search" placeholder="Filter results (title / company)…">
-      <div class="selects">
-        <label>Experience
-          <select id="fExp">
-            <option value="any">Any</option>
-            <option value="fresher">Fresher (0–1 yr)</option>
-            <option value="junior">Junior (1–3 yr)</option>
-            <option value="mid">Mid (3–6 yr)</option>
-            <option value="senior">Senior (6+ yr)</option>
-          </select>
-        </label>
-        <label>Freshness
-          <select id="fFresh">
-            <option value="0">Any time</option>
-            <option value="1">Past 24 hours</option>
-            <option value="3">Past 3 days</option>
-            <option value="7">Past week</option>
-            <option value="30">Past month</option>
-          </select>
-        </label>
-        <label>Work mode
-          <select id="fMode">
-            <option value="any">Any</option>
-            <option value="remote">Remote</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="onsite">On-site</option>
-          </select>
-        </label>
-        <label>Sort
-          <select id="fSort">
-            <option value="newfirst">New first</option>
-            <option value="newest">Newest posted</option>
-            <option value="company">Company A–Z</option>
-            <option value="title">Title A–Z</option>
-            <option value="salary">Salary (high→low)</option>
-          </select>
-        </label>
+      <div class="rail-foot">
+        <button id="search" class="primary block">▶ Search selected</button>
+        <div id="status" class="status"></div>
       </div>
-      <div id="srcChips" class="src-chips"></div>
-      <span id="showing" class="showing"></span>
-    </section>
+    </aside>
 
-    <section class="results">
-      <table id="tbl">
-        <thead>
-          <tr><th></th><th>Title</th><th>Company</th><th>Location</th><th>Pay / Exp</th><th>Posted</th><th>Source(s)</th></tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <div id="empty" class="empty">No results yet — pick providers and hit Search.</div>
-    </section>
-  </main>
+    <!-- ==================== CONTENT ==================== -->
+    <main class="content">
+      <div class="topbar">
+        <div class="topbar-row">
+          <h1>Results <span id="count" class="count"></span></h1>
+          <div class="topbar-actions">
+            <label class="mini-chk"><input type="checkbox" id="onlyNew"> only new</label>
+            <button id="csv" class="ghost" disabled>⬇ Export CSV</button>
+          </div>
+        </div>
+
+        <div id="toolbar" class="toolbar" hidden>
+          <input id="fText" type="text" class="search-in" placeholder="Filter title / company…">
+          <label class="sel">Experience
+            <select id="fExp"><option value="any">Any</option><option value="fresher">Fresher 0–1</option><option value="junior">Junior 1–3</option><option value="mid">Mid 3–6</option><option value="senior">Senior 6+</option></select>
+          </label>
+          <label class="sel">Freshness
+            <select id="fFresh"><option value="0">Any time</option><option value="1">24 hours</option><option value="3">3 days</option><option value="7">This week</option><option value="30">This month</option></select>
+          </label>
+          <label class="sel">Mode
+            <select id="fMode"><option value="any">Any</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select>
+          </label>
+          <label class="sel">Sort
+            <select id="fSort"><option value="newfirst">New first</option><option value="newest">Newest</option><option value="company">Company</option><option value="title">Title</option><option value="salary">Salary</option></select>
+          </label>
+          <span id="showing" class="showing"></span>
+          <div id="srcChips" class="src-chips"></div>
+        </div>
+      </div>
+
+      <div id="rows" class="cards"></div>
+      <div id="empty" class="empty">
+        <div class="empty-mark">✦</div>
+        <p>Pick your providers and hit <b>Search selected</b>.<br>Results from every board land here, de-duplicated.</p>
+      </div>
+    </main>
+  </div>
 
   <script src="sites.js"></script>
   <script src="results.js"></script>

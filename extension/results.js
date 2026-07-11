@@ -57,22 +57,37 @@ function salaryNum(job) {
   return v;
 }
 
+// ---------- avatar helpers ----------
+function initials(str) {
+  const words = (str || "").replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "?";
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return words[0].slice(0, 2).toUpperCase();
+}
+function avatarColor(seed) {
+  let h = 0; const s = seed || "?";
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  return `linear-gradient(135deg, hsl(${h},72%,58%), hsl(${(h + 40) % 360},68%,46%))`;
+}
+
 // ---------- build provider list ----------
 const AGG_IDS = SITE_ORDER.filter(id => !(AGG[id] && AGG[id].noAgg));
 const provState = {};
 for (const id of SITE_ORDER) {
-  const row = document.createElement("div"); row.className = "prov";
-  const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "p_" + id;
   const noAgg = AGG[id] && AGG[id].noAgg;
-  cb.disabled = !!noAgg;
-  const name = document.createElement("label"); name.className = "name"; name.htmlFor = cb.id; name.textContent = SITES[id].name;
-  const light = document.createElement("span"); light.className = "light na"; light.textContent = noAgg ? "popup only" : "";
-  if (noAgg) row.classList.add("disabled");
-  row.appendChild(cb); row.appendChild(name); row.appendChild(light);
+  const row = document.createElement("div"); row.className = "prov" + (noAgg ? " disabled" : "");
+  const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "p_" + id; cb.disabled = !!noAgg;
+  const av = document.createElement("div"); av.className = "pa"; av.textContent = initials(SITES[id].name); av.style.background = avatarColor(id);
+  const name = document.createElement("span"); name.className = "name"; name.textContent = SITES[id].name;
+  const ps = document.createElement("span"); ps.className = "pstatus"; ps.textContent = noAgg ? "popup only" : "";
+  const dot = document.createElement("span"); dot.className = "dot na";
+  row.append(cb, av, name, ps, dot);
+  if (!noAgg) row.onclick = e => { if (e.target.tagName === "BUTTON") return; cb.checked = !cb.checked; row.classList.toggle("on", cb.checked); };
   providersEl.appendChild(row);
-  provState[id] = { cb, light, row };
+  provState[id] = { cb, dot, ps, row };
 }
-$("selAll").addEventListener("change", e => { for (const id of AGG_IDS) provState[id].cb.checked = e.target.checked; });
+function syncProvClasses() { for (const id of AGG_IDS) provState[id].row.classList.toggle("on", provState[id].cb.checked); }
+$("selAll").addEventListener("change", e => { for (const id of AGG_IDS) provState[id].cb.checked = e.target.checked; syncProvClasses(); });
 
 // ---------- login pre-check ----------
 async function checkLogin(id) {
@@ -85,13 +100,14 @@ async function checkLogin(id) {
   } catch (e) { return "na"; }
 }
 function setLight(id, cls, text) {
-  const l = provState[id].light;
-  l.className = "light " + cls; l.textContent = text;
-  const ex = provState[id].row.querySelector(".loginbtn"); if (ex) ex.remove();
+  const s = provState[id]; if (!s) return;
+  s.dot.className = "dot " + cls;
+  s.ps.textContent = text || "";
+  const ex = s.row.querySelector(".loginbtn"); if (ex) ex.remove();
   if (cls === "out" && AGG[id].needsLogin) {
     const b = document.createElement("button"); b.className = "loginbtn"; b.textContent = "Log in";
-    b.onclick = () => chrome.tabs.create({ url: AGG[id].loginUrl || AGG[id].url({ role: "", loc: "" }), active: true });
-    provState[id].row.appendChild(b);
+    b.onclick = e => { e.stopPropagation(); chrome.tabs.create({ url: AGG[id].loginUrl || AGG[id].url({ role: "", loc: "" }), active: true }); };
+    s.ps.after(b);
   }
 }
 async function recheckLogins() {
@@ -208,6 +224,8 @@ function renderSourceChips() {
     srcChipsEl.appendChild(c);
   });
 }
+let hasRun = false;
+const EMPTY_DEFAULT = emptyEl.innerHTML;
 function render() {
   const f = currentFilters();
   renderSourceChips();
@@ -218,26 +236,47 @@ function render() {
   for (const e of list) frag.appendChild(rowFor(e));
   rowsEl.appendChild(frag);
   toolbarEl.hidden = merged.size === 0;
-  emptyEl.style.display = list.length ? "none" : "block";
-  if (!list.length && merged.size) emptyEl.textContent = "No results match the current filters.";
-  countEl.textContent = merged.size ? merged.size + " unique job(s)" : "";
+  const showEmpty = list.length === 0;
+  emptyEl.style.display = showEmpty ? "block" : "none";
+  if (showEmpty) {
+    emptyEl.innerHTML = merged.size
+      ? '<div class="empty-mark">∅</div><p>No results match the current filters.</p>'
+      : hasRun
+        ? '<div class="empty-mark">∅</div><p>No results. Try a broader role/keywords, check provider logins,<br>or run a provider individually from the popup.</p>'
+        : EMPTY_DEFAULT;
+  }
+  countEl.textContent = merged.size ? "· " + merged.size : "";
   showingEl.textContent = merged.size ? `showing ${list.length} of ${merged.size}` : "";
 }
 function rowFor(entry) {
   const j = entry.job;
-  const tr = document.createElement("tr");
-  const td = html => { const c = document.createElement("td"); c.innerHTML = html; return c; };
-  tr.appendChild(td(entry.isNew ? '<span class="badge">NEW</span>' : ""));
-  const tt = document.createElement("td");
+  const card = document.createElement("div"); card.className = "card" + (entry.isNew ? " new" : "");
+  const av = document.createElement("div"); av.className = "avatar";
+  av.textContent = initials(j.company || j.title); av.style.background = avatarColor(j.company || j.title);
+  const main = document.createElement("div"); main.className = "card-main";
+  const t = document.createElement("div"); t.className = "card-title";
   const a = document.createElement("a"); a.href = j.url; a.target = "_blank"; a.textContent = j.title;
-  tt.appendChild(a); tr.appendChild(tt);
-  tr.appendChild(td(escHtml(j.company || "") || '<span class="muted">—</span>'));
-  tr.appendChild(td(escHtml(j.location || j.locations || "") || '<span class="muted">—</span>'));
-  tr.appendChild(td(escHtml([j.salary, j.exp].filter(x => x && x !== "—").join(" · ")) || '<span class="muted">—</span>'));
+  t.appendChild(a);
+  if (entry.isNew) { const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; t.appendChild(b); }
+  main.appendChild(t);
+  const sub = document.createElement("div"); sub.className = "card-sub";
+  const locv = j.location || j.locations || "";
+  sub.innerHTML = `<span class="co">${escHtml(j.company || "—")}</span>` + (locv ? ` · ${escHtml(locv)}` : "");
+  main.appendChild(sub);
+  const metas = document.createElement("div"); metas.className = "metas";
+  const addMeta = (txt, cls) => { if (!txt || txt === "—") return; const m = document.createElement("span"); m.className = "meta" + (cls ? " " + cls : ""); m.textContent = txt; metas.appendChild(m); };
+  addMeta(j.salary, "pay"); addMeta(j.exp, "");
+  const mode = jobMode(j); if (mode) addMeta(mode[0].toUpperCase() + mode.slice(1), "mode");
+  if (metas.children.length) main.appendChild(metas);
+  const side = document.createElement("div"); side.className = "card-side";
   const d = jobDays(j);
-  tr.appendChild(td(d == null ? '<span class="muted">—</span>' : d === 0 ? "today" : d === 1 ? "1 day" : d < 30 ? d + " days" : "30+ days"));
-  tr.appendChild(td([...entry.sources].map(s => `<span class="pill">${escHtml(s)}</span>`).join("")));
-  return tr;
+  const posted = document.createElement("div"); posted.className = "posted";
+  posted.textContent = d == null ? "" : d === 0 ? "today" : d === 1 ? "1 day ago" : d < 30 ? d + " days ago" : "30+ days";
+  const src = document.createElement("div"); src.className = "sources";
+  [...entry.sources].forEach(s => { const p = document.createElement("span"); p.className = "pill"; p.textContent = s; src.appendChild(p); });
+  side.appendChild(posted); side.appendChild(src);
+  card.append(av, main, side);
+  return card;
 }
 
 // live streaming
@@ -301,10 +340,10 @@ async function searchAll() {
   await chrome.storage.local.set({ agg_seen: [...new Set([...seenAtStart, ...allUrls])].slice(-8000) });
 
   const newCount = [...merged.values()].filter(e => e.isNew).length;
-  statusEl.textContent = `✅ Done — ${merged.size} unique job(s), ${newCount} new since last run.`;
+  statusEl.textContent = `✅ Done — ${merged.size} job(s), ${newCount} new.`;
   $("csv").disabled = merged.size === 0;
+  hasRun = true;
   render();
-  if (!merged.size) { emptyEl.textContent = "No results. Try a broader role/keywords, check logins, or run providers individually from the popup."; emptyEl.style.display = "block"; }
 }
 $("search").addEventListener("click", searchAll);
 
@@ -323,6 +362,7 @@ $("csv").addEventListener("click", () => {
 // ---------- init ----------
 (async function init() {
   for (const id of ["linkedin", "shine", "cutshort", "foundit"]) if (provState[id]) provState[id].cb.checked = true;
+  syncProvClasses();
   $("role").value = "android developer";
   $("keywords").value = "android, kotlin, jetpack, flutter";
   await recheckLogins();
