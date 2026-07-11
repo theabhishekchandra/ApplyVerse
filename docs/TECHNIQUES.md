@@ -29,12 +29,18 @@ filtering, de-dupe by URL/id, live results list, and a Blob→anchor CSV downloa
 ## Per site
 
 ### ZipRecruiter — `finders/ziprecruiter.txt`
-- SSR; `fetch(page URL)` + DOMParser.
-- Cards `li.job-listing`; title `a.jobList-title`; meta `ul.jobList-introMeta li`
-  (company/location); date `.jobList-date`; desc `.jobList-description`.
-- Pagination `?page=N`.
-- **Relevance mode win:** dropping `&sort=published_at` returns far more on-topic
-  hits per page (~19 vs 1).
+- **Rewritten 2026-07 — ZR is now a two-pane React app; the old
+  `li.job-listing`/`a.jobList-title` markup is gone and cards carry no direct
+  job href.** Current method: fetch `/jobs-search?search=<q>&location=<loc>&page=N`
+  (note the path is `/jobs-search`, params are `search=`/`location=`, NOT
+  `/jobs/search?q=`), then read the **`ld+json` ItemList** in the page — 20
+  `ListItem`s each with `name` (title) + `url` (the real `?jid=` job link).
+- Pair each ItemList entry **by index** with its rendered card
+  `div[class*="job_result"]` for company `[data-testid="job-card-company"]`,
+  location `[data-testid="job-card-location"]`, and salary (a `$`/`₹` regex over
+  the card text).
+- Pagination via `&page=N` (verified: page 2 returns different jobs). Stops on
+  CAPTCHA. Note ZR is US-centric — India queries often return 0.
 
 ### LinkedIn — `finders/linkedin.txt`
 - Page HTML is obfuscated (hashed classes, no `data-job-id`) **and** enforces

@@ -101,38 +101,50 @@
   async function runSearch(cfg) {
     const kwRx = cfg.KEYWORDS.length ? new RegExp(cfg.KEYWORDS.map(esc).join("|"), "i") : null;
     const exRx = cfg.EXCLUDE.length  ? new RegExp(cfg.EXCLUDE.map(esc).join("|"),  "i") : null;
-    const base = location.origin + "/jobs/search";
-    const params = new URLSearchParams(location.search);
-    if (cfg.QUERY) params.set("q", cfg.QUERY);
-    if (cfg.RELEVANCE) params.delete("sort");
+    // ZipRecruiter is now a two-pane React app: cards carry no direct job href.
+    // We fetch each results page (/jobs-search?...&page=N) and read the ld+json
+    // ItemList (title + real ?jid= job URL, 20/page), pairing each with its
+    // rendered card (company/location/salary) by index.
+    const sp = new URLSearchParams(location.search);
+    const search = cfg.QUERY || sp.get("search") || sp.get("q") || "";
+    const loc0 = sp.get("location") || "";
+    const origin = location.origin;
+    const tc = (el, sel) => { const n = el && el.querySelector(sel); return n ? (n.textContent || "").trim() : ""; };
 
-    const MEM_KEY = "zjf_seen_" + (params.get("q") || "all");
+    const MEM_KEY = "zjf_seen_" + (search || "all");
     const memSeen = new Set(cfg.REMEMBER ? JSON.parse(localStorage.getItem(MEM_KEY) || "[]") : []);
 
-    say(`🔎 "${params.get("q")}" | keywords: [${cfg.KEYWORDS.join(", ") || "ANY"}]${cfg.FULL_JD ? " | full-JD" : ""}`);
+    say(`🔎 "${search}"${loc0 ? " @ " + loc0 : ""} | keywords: [${cfg.KEYWORDS.join(", ") || "ANY"}]${cfg.FULL_JD ? " | full-JD" : ""}`);
     const seen = new Set(), matches = [];
 
     for (let page = 1; page <= cfg.MAX_PAGES; page++) {
-      params.set("page", page);
-      let doc;
+      const u = origin + "/jobs-search?search=" + encodeURIComponent(search) + "&location=" + encodeURIComponent(loc0) + (page > 1 ? "&page=" + page : "");
+      let doc, html;
       try {
-        const res = await fetch(base + "?" + params.toString(), { credentials: "include" });
-        doc = new DOMParser().parseFromString(await res.text(), "text/html");
+        const res = await fetch(u, { credentials: "include" });
+        html = await res.text();
+        if (res.status !== 200) { say(`⚠ page ${page}: HTTP ${res.status} — stopping.`); break; }
       } catch (e) { say(`⚠ page ${page} failed — stopping.`); break; }
+      if (/captcha|verify you are human|unusual traffic/i.test(html)) { say("🛑 ZipRecruiter CAPTCHA — stopping."); break; }
+      doc = new DOMParser().parseFromString(html, "text/html");
 
-      const cards = [...doc.querySelectorAll("li.job-listing")];
-      if (!cards.length) { say(`📄 Page ${page}: no jobs — last page reached.`); break; }
+      const ld = [...doc.querySelectorAll('script[type="application/ld+json"]')].map(s => { try { return JSON.parse(s.textContent); } catch { return null; } }).filter(Boolean);
+      const list = ld.find(o => o && o["@type"] === "ItemList");
+      const items = (list && list.itemListElement) || [];
+      const zcards = [...doc.querySelectorAll('div[class*="job_result"]')];
+      if (!items.length) { say(`📄 Page ${page}: no jobs — last page reached.`); break; }
 
       let hits = 0;
-      for (const card of cards) {
-        const t = card.querySelector("a.jobList-title, a.job-link"); if (!t) continue;
-        const title = (t.innerText || "").trim(), url = t.href;
-        const meta = [...card.querySelectorAll("ul.jobList-introMeta li")].map(li => li.innerText.trim());
-        const company = meta[0] || "", location = meta[1] || "";
-        const date = (card.querySelector(".jobList-date")?.innerText || "").trim();
-        const snippet = (card.querySelector(".jobList-description")?.innerText || card.innerText || "").trim();
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const title = (it.name || "").trim(), url = it.url || "";
+        if (!title || !url) continue;
+        const card = zcards[i];
+        const company = tc(card, '[data-testid="job-card-company"]');
+        const location = tc(card, '[data-testid="job-card-location"]');
+        const salary = ((card && card.innerText || "").match(/[$₹]\s?[\d.,]+\s?[KkMm]?(?:\s?[-–]\s?[$₹]?\s?[\d.,]+\s?[KkMm]?)?(?:\s?\/\s?(?:yr|hr|hour|year|month))?/) || ["—"])[0];
 
-        let text = title + "\n" + snippet;
+        let text = title + " " + company;
         if (cfg.FULL_JD) {
           try {
             const jr = await fetch(url, { credentials: "include" });
@@ -145,12 +157,11 @@
         const keep = (!kwRx || kwRx.test(text)) && !(exRx && exRx.test(text));
         if (!keep || seen.has(url) || (cfg.REMEMBER && memSeen.has(url))) continue;
         seen.add(url);
-        const salary = (text.match(/(?:₹|Rs\.?|INR)\s?[\d,]+(?:\s?-\s?[\d,]+)?|[\d.]+\s?LPA/i) || ["—"])[0];
-        const rec = { page, title, company, location, date, salary, url };
+        const rec = { page, title, company, location, date: "", salary, url };
         matches.push(rec); addRow(rec); hits++;
         console.log(`✓ [p${page}] ${title} — ${company} — ${url}`);
       }
-      say(`page ${page}: ${cards.length} jobs, ${hits} match. Total: ${matches.length}`);
+      say(`page ${page}: ${items.length} jobs, ${hits} match. Total: ${matches.length}`);
       if (cfg.STOP_AT && matches.length >= cfg.STOP_AT) { say(`🎯 Reached ${cfg.STOP_AT} — stopping.`); break; }
       await delay(cfg.DELAY_MS);
     }

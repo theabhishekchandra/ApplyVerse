@@ -26,65 +26,68 @@ var SITES = {
   ziprecruiter: {
     name: "ZipRecruiter",
     match: /(^|\.)ziprecruiter\.com$/i,
-    note: "Be on a ZipRecruiter results page. Blank Profile = use the page's current search.",
+    note: "Be on a ZipRecruiter results page. Blank Profile/Location = use the page's current search.",
     fields: [
       { k: "profile",  label: "Profile / role (blank = page's search)", t: "text", def: "", ph: "android developer" },
+      { k: "location", label: "Location (blank = page's location)", t: "text", def: "", ph: "New York, NY" },
       { k: "keywords", label: "Keywords (ANY match; blank = all)", t: "text", def: "android, kotlin, jetpack, flutter", ph: "android, kotlin" },
       { k: "exclude",  label: "Exclude words", t: "text", def: "", ph: "senior, sales" },
       { k: "maxPages", label: "Max pages", t: "num", def: 15 },
-      { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 },
-      { k: "fullJD",   label: "Scan full job description (slower)", t: "check", def: false },
-      { k: "relevance",label: "Relevance mode (more real hits)", t: "check", def: false }
+      { k: "stop",     label: "Stop after N (0=all)", t: "num", def: 0 }
     ],
+    // ZipRecruiter is a two-pane React app: cards carry no direct job href, so
+    // we fetch each results page (/jobs-search?...&page=N) and read the
+    // ld+json ItemList (title + real ?jid= job URL, 20/page), pairing each with
+    // its rendered card (company/location/salary) by index.
     scrape: async function (cfg) {
       const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const delay = ms => new Promise(r => setTimeout(r, ms));
       const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
       const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
+      const tc = (el, sel) => { const n = el && el.querySelector(sel); return n ? (n.textContent || "").trim() : ""; };
       const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
       const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
-      const base = location.origin + "/jobs/search";
-      const params = new URLSearchParams(location.search);
-      if (cfg.profile) params.set("q", cfg.profile);
-      if (cfg.relevance) params.delete("sort");
-      say(`Searching "${params.get("q") || ""}"...`);
+      const sp = new URLSearchParams(location.search);
+      const search = cfg.profile || sp.get("search") || sp.get("q") || "";
+      const loc = cfg.location || sp.get("location") || "";
+      const origin = location.origin;
+      say(`Searching "${search}"${loc ? " @ " + loc : ""}...`);
       const seen = new Set(), matches = [];
       for (let page = 1; page <= cfg.maxPages; page++) {
-        params.set("page", page);
-        let doc;
+        const u = origin + "/jobs-search?search=" + encodeURIComponent(search) + "&location=" + encodeURIComponent(loc) + (page > 1 ? "&page=" + page : "");
+        let doc, html;
         try {
-          const res = await fetch(base + "?" + params.toString(), { credentials: "include" });
-          doc = new DOMParser().parseFromString(await res.text(), "text/html");
+          const r = await fetch(u, { credentials: "include" });
+          html = await r.text();
+          if (r.status !== 200) { say(`page ${page}: HTTP ${r.status} — stopping.`); break; }
         } catch (e) { say(`⚠ page ${page} failed — stopping.`); break; }
-        const cards = [...doc.querySelectorAll("li.job-listing")];
-        if (!cards.length) { say(`Page ${page}: no jobs — last page.`); break; }
+        if (/captcha|verify you are human|unusual traffic/i.test(html)) { say("🛑 ZipRecruiter showed a CAPTCHA — stopping."); break; }
+        doc = new DOMParser().parseFromString(html, "text/html");
+        const ld = [...doc.querySelectorAll('script[type="application/ld+json"]')].map(s => { try { return JSON.parse(s.textContent); } catch (e) { return null; } }).filter(Boolean);
+        const list = ld.find(o => o && o["@type"] === "ItemList");
+        const items = (list && list.itemListElement) || [];
+        const cards = [...doc.querySelectorAll('div[class*="job_result"]')];
+        if (!items.length) { say(`Page ${page}: no jobs — last page.`); break; }
         let hits = 0;
-        for (const card of cards) {
-          const t = card.querySelector("a.jobList-title, a.job-link"); if (!t) continue;
-          const title = (t.innerText || "").trim(), url = t.href;
-          const meta = [...card.querySelectorAll("ul.jobList-introMeta li")].map(li => li.innerText.trim());
-          const company = meta[0] || "", loc = meta[1] || "";
-          const date = (card.querySelector(".jobList-date")?.innerText || "").trim();
-          const snippet = (card.querySelector(".jobList-description")?.innerText || card.innerText || "").trim();
-          let text = title + "\n" + snippet;
-          if (cfg.fullJD) {
-            try {
-              const jr = await fetch(url, { credentials: "include" });
-              const jd = new DOMParser().parseFromString(await jr.text(), "text/html");
-              text = jd.querySelector("main")?.innerText || jd.body.innerText || text;
-              await delay(350);
-            } catch (e) {}
-          }
-          const keep = (!kwRx || kwRx.test(text)) && !(exRx && exRx.test(text));
-          if (!keep || seen.has(url)) continue;
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          const title = (it.name || "").trim();
+          const url = it.url || "";
+          if (!title || !url || seen.has(url)) continue;
+          const card = cards[i];
+          const company = tc(card, '[data-testid="job-card-company"]');
+          const cloc = tc(card, '[data-testid="job-card-location"]');
+          const salary = ((card && card.innerText || "").match(/[$₹]\s?[\d.,]+\s?[KkMm]?(?:\s?[-–]\s?[$₹]?\s?[\d.,]+\s?[KkMm]?)?(?:\s?\/\s?(?:yr|hr|hour|year|month))?/) || ["—"])[0];
+          const text = title + " " + company;
+          if (kwRx && !kwRx.test(text)) continue;
+          if (exRx && exRx.test(text)) continue;
           seen.add(url);
-          const salary = (text.match(/(?:₹|Rs\.?|INR)\s?[\d,]+(?:\s?-\s?[\d,]+)?|[\d.]+\s?LPA/i) || ["—"])[0];
-          const rec = { title, company, location: loc, date, salary, url };
-          matches.push(rec); report(rec);
+          const rec = { title, company, location: cloc, salary, url };
+          matches.push(rec); report(rec); hits++;
         }
-        say(`page ${page}: ${cards.length} jobs, ${hits} match. Total: ${matches.length}`);
+        say(`page ${page}: ${items.length} jobs, ${hits} match. Total: ${matches.length}`);
         if (cfg.stop && matches.length >= cfg.stop) { say(`Reached ${cfg.stop} — stopping.`); break; }
-        await delay(700);
+        await delay(600);
       }
       return matches;
     }
@@ -343,7 +346,8 @@ var SITES = {
         const skills = lines.slice(salIdx + 1).filter(l => !noise.test(l) && l.length < 30).slice(0, 8).join(", ");
         return { title, company, exp, salary, location: locn, skills, url };
       }
-      const links = jobLinks();
+      let links = jobLinks();
+      if (!links.length) { await new Promise(r => setTimeout(r, 1500)); links = jobLinks(); } // let the SPA render
       if (!links.length) { say("⚠ No jobs found. Open a cutshort.io/jobs/<role>-jobs page, let it load, then Start."); return []; }
       say(`Scanning ${links.length} jobs...`);
       const seen = new Set(), matches = [];
