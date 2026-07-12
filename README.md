@@ -153,3 +153,9 @@ layout, conventions, and the account-safety rules).
 ## 📄 License
 
 [MIT](LICENSE) — by contributing you agree your contributions are MIT-licensed.
+
+---
+
+<p align="center">
+  Built with ☕ and vanilla JS · If you find <b>ApplyVerse</b> useful, drop a ⭐
+</p>
