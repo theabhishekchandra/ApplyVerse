@@ -10,6 +10,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // norm(), jobKey() and fitScore() live in rank.js (pure, unit-tested), loaded
 // before this script so their bindings are in scope here.
 const escHtml = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// Point an <a> at a job URL, but only if it's a real http(s) link — safeUrl()
+// (rank.js) rejects `javascript:`/`data:` smuggled in via a scraped listing.
+function linkTo(a, url, title) {
+  const safe = safeUrl(url);
+  if (safe) { a.href = safe; a.target = "_blank"; a.rel = "noopener noreferrer"; if (title) a.title = title; }
+  else { a.removeAttribute("href"); a.classList.add("nolink"); a.title = "This listing didn't provide a usable link."; }
+  return a;
+}
 // provider display name — works for both DOM-scrape sites and ATS sweep pseudo-providers
 const nameOf = id => (provState[id] && provState[id].name) || (SITES[id] ? SITES[id].name : id);
 
@@ -61,46 +69,11 @@ function skeletonCards(n) {
 }
 
 // ---------- derived fields for filtering ----------
-// experience as a [minYears, maxYears] range (or null if unknown) so bucket
-// matching can overlap — e.g. "5-8 yrs" counts as BOTH mid and senior.
-function jobExpRange(job) {
-  const m = (job.exp || "").match(/(\d+)\s*(?:-\s*(\d+))?\s*(\+)?\s*(?:yrs?|years?)/i);
-  if (m) { const lo = parseInt(m[1]); const hi = m[2] ? parseInt(m[2]) : (m[3] ? 99 : lo); return [lo, hi]; }
-  const t = (job.title || "").toLowerCase();
-  if (/intern|fresher|graduate|trainee|entry[- ]level|\b0\s*[-–]\s*1\b/.test(t)) return [0, 1];
-  if (/\bjr\b|junior|associate/.test(t)) return [1, 3];
-  if (/senior|\bsr\b|lead|principal|staff|architect|head of|vp\b/.test(t)) return [6, 99];
-  return null;
-}
-const EXP_BUCKETS = { fresher: [0, 1], junior: [1, 3], mid: [3, 6], senior: [6, 99] };
-function jobDays(job) {                       // -> days since posted, or null
-  const raw = (job.date || job.posted || "").toString().trim();
-  if (!raw) return null;
-  const iso = Date.parse(raw);
-  if (!isNaN(iso)) return Math.max(0, Math.floor((Date.now() - iso) / 86400000));
-  const s = raw.toLowerCase();
-  if (/today|just now|hour|min|moment/.test(s)) return 0;
-  if (/yesterday/.test(s)) return 1;
-  const m = s.match(/(\d+)\s*\+?\s*(day|week|month)/);
-  if (m) { const n = parseInt(m[1]); return m[2] === "day" ? n : m[2] === "week" ? n * 7 : n * 30; }
-  if (/30\+|month/.test(s)) return 30;
-  return null;
-}
-function jobMode(job) {                        // remote|hybrid|onsite|null
-  const s = ((job.location || job.locations || "") + " " + (job.details || "")).toLowerCase();
-  if (/hybrid/.test(s)) return "hybrid";
-  if (/remote/.test(s)) return "remote";
-  if (/in office|on[- ]?site/.test(s)) return "onsite";
-  return null;
-}
-function salaryNum(job) {
-  const s = (job.salary || "");
-  const m = s.match(/[\d.,]+/g);
-  if (!m) return 0;
-  let v = parseFloat(m[m.length - 1].replace(/,/g, "")) || 0;
-  if (/l|lac|lakh/i.test(s)) v *= 100000; else if (/k/i.test(s)) v *= 1000;
-  return v;
-}
+// jobExpRange(), EXP_BUCKETS, jobDays(), jobMode(), salaryNum(), passes() and
+// sortEntries() live in filters.js (pure, unit-tested), loaded before this
+// script so their bindings are in scope here. `passes` takes the UI state it
+// needs as a third argument — see filterCtx().
+const filterCtx = () => ({ track, activeSources });
 
 // ---------- fit scoring (Tier 2) ----------
 // Rank by how well a job matches your keywords/role. Title hits weigh most,
@@ -126,6 +99,24 @@ async function recordHealth(id, count) {
   health[id] = h;
   await chrome.storage.local.set({ [JF_KEYS.health]: health });
   return drift;
+}
+// Is a provider currently suspected of scraper drift? (Recorded on every run;
+// this reads it back so the warning survives a page reload instead of only
+// existing for the seconds after the run that detected it.)
+function driftedNow(id) {
+  const h = health[id];
+  return !!(h && h.best > 2 && h.lastCount === 0);
+}
+// Paint stored drift onto the provider rows at load time. Without this the
+// health data was written on every run and then never read by anything.
+function showHealthWarnings() {
+  for (const id of Object.keys(provState)) {
+    if (!driftedNow(id)) continue;
+    const s = provState[id];
+    s.row.classList.add("drift");
+    s.row.title = `${nameOf(id)} returned 0 last run but has found up to ${health[id].best} before — the site layout may have changed.`;
+    if (s.ps && !s.ps.textContent.includes("⚠")) s.ps.textContent = "⚠ drift?";
+  }
 }
 
 // ---------- apply tracking (Tier 2) ----------
@@ -223,6 +214,7 @@ function setLight(id, cls, text) {
   const ex = s.row.querySelector(".loginbtn"); if (ex) ex.remove();
   if (cls === "out" && AGG[id] && AGG[id].needsLogin) {
     const b = document.createElement("button"); b.className = "loginbtn"; b.textContent = "Log in";
+    b.setAttribute("aria-label", `Log in to ${nameOf(id)}`);
     b.onclick = e => { e.stopPropagation(); openLogin(id); };
     s.ps.after(b);
   }
@@ -248,6 +240,7 @@ function markPending(id) {
   const ex = s.row.querySelector(".loginbtn"); if (ex) ex.remove();
   const b = document.createElement("button"); b.className = "loginbtn confirm"; b.textContent = "✓ Logged in";
   b.title = "I've finished logging in — mark this provider ready";
+  b.setAttribute("aria-label", `I've finished logging in to ${nameOf(id)} — mark it ready`);
   b.onclick = e => { e.stopPropagation(); loginDetected(id, true); };
   s.ps.after(b);
 }
@@ -304,14 +297,26 @@ function buildCfg(id, shared) {
 }
 
 // ---------- tab helpers ----------
+// Event-driven rather than polled: resolves the moment the tab reports
+// complete, with a timer only as the ceiling.
 function waitComplete(tabId, timeout = 25000) {
   return new Promise(resolve => {
-    const t0 = Date.now();
-    const iv = setInterval(async () => {
-      let tab;
-      try { tab = await chrome.tabs.get(tabId); } catch (e) { clearInterval(iv); return resolve(false); }
-      if (tab.status === "complete" || Date.now() - t0 > timeout) { clearInterval(iv); resolve(true); }
-    }, 400);
+    let done = false;
+    const finish = val => {
+      if (done) return; done = true;
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      chrome.tabs.onRemoved.removeListener(onRemoved);
+      resolve(val);
+    };
+    const onUpdated = (id, info) => { if (id === tabId && info.status === "complete") finish(true); };
+    const onRemoved = id => { if (id === tabId) finish(false); };
+    const timer = setTimeout(() => finish(true), timeout);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.tabs.onRemoved.addListener(onRemoved);
+    // It may already be complete — check once after wiring up, so we cannot
+    // miss the event in the gap.
+    chrome.tabs.get(tabId).then(t => { if (t && t.status === "complete") finish(true); }, () => finish(false));
   });
 }
 async function exec(tabId, func, arg) {
@@ -324,14 +329,14 @@ function looksLoggedOut(id, probe) {
 }
 
 // ---------- merge + render ----------
+// One CARD per jobKey (title|company), but every distinct POSTING inside that
+// group is retained so no listing's URL is lost. The merge itself is pure and
+// unit-tested — mergePosting() in rank.js.
+function mergeJob(job, sourceName, isNewOverride) {
+  return mergePosting(merged, job, sourceName, { isSeen: pk => seenAtStart.has(pk), isNew: isNewOverride });
+}
 function upsert(job, sourceId) {
-  if (!job || !job.title || !job.url) return;
-  const k = jobKey(job);
-  let entry = merged.get(k);
-  if (!entry) { entry = { job, sources: new Set(), isNew: !seenAtStart.has(job.url) }; merged.set(k, entry); }
-  else { for (const f of ["company", "location", "salary", "exp", "posted", "date"]) if (!entry.job[f] && job[f]) entry.job[f] = job[f]; }
-  entry.sources.add(nameOf(sourceId));
-  scheduleRender();
+  if (mergeJob(job, nameOf(sourceId))) scheduleRender();
 }
 function scheduleRender() { if (!renderTimer) renderTimer = setTimeout(() => { renderTimer = null; render(); }, 180); }
 
@@ -345,47 +350,6 @@ function currentFilters() {
     track: $("fTrack") ? $("fTrack").value : "active",
     onlyNew: $("onlyNew").checked
   };
-}
-function passes(entry, f) {
-  const j = entry.job;
-  const st = track[jobKey(j)];
-  // Apply-tracking filter: default hides jobs you've dismissed.
-  if (f.track === "active") { if (st === "hidden") return false; }
-  else if (f.track === "saved") { if (st !== "saved") return false; }
-  else if (f.track === "applied") { if (st !== "applied") return false; }
-  if (f.onlyNew && !entry.isNew) return false;
-  if (activeSources && ![...entry.sources].some(s => activeSources.has(s))) return false;
-  if (f.text && !((j.title || "").toLowerCase().includes(f.text) || (j.company || "").toLowerCase().includes(f.text))) return false;
-  // Experience — STRICT (unknown excluded), range-overlap against the bucket.
-  if (f.exp !== "any") {
-    const r = jobExpRange(j); if (!r) return false;
-    const b = EXP_BUCKETS[f.exp];
-    if (!(r[0] <= b[1] && r[1] >= b[0])) return false;
-  }
-  // Work mode — STRICT (unknown excluded): "Remote" shows only remote roles.
-  if (f.mode !== "any") { if (jobMode(j) !== f.mode) return false; }
-  // Freshness — LENIENT (undated kept): posted-date data is sparse across boards.
-  if (f.fresh) { const d = jobDays(j); if (d != null && d > f.fresh) return false; }
-  return true;
-}
-function sortEntries(list, sort) {
-  const cmpStr = (a, b) => a.localeCompare(b);
-  list.sort((A, B) => {
-    const a = A.job, b = B.job;
-    if (sort === "fit") {
-      if ((B._fit || 0) !== (A._fit || 0)) return (B._fit || 0) - (A._fit || 0);
-      if (A.isNew !== B.isNew) return A.isNew ? -1 : 1;
-      const da = jobDays(a), db = jobDays(b); return (da == null ? 1e9 : da) - (db == null ? 1e9 : db);
-    }
-    if (sort === "company") return cmpStr(a.company || "~", b.company || "~");
-    if (sort === "title") return cmpStr(a.title || "~", b.title || "~");
-    if (sort === "salary") return salaryNum(b) - salaryNum(a);
-    if (sort === "newest") { const da = jobDays(a), db = jobDays(b); return (da == null ? 1e9 : da) - (db == null ? 1e9 : db); }
-    // newfirst (default): new badge first, then freshest
-    if (A.isNew !== B.isNew) return A.isNew ? -1 : 1;
-    const da = jobDays(a), db = jobDays(b); return (da == null ? 1e9 : da) - (db == null ? 1e9 : db);
-  });
-  return list;
 }
 function renderSourceChips() {
   const present = new Set();
@@ -408,7 +372,8 @@ function render() {
   renderSourceChips();
   const terms = matchTerms();
   for (const e of merged.values()) e._fit = fitScore(e.job, terms);
-  let list = [...merged.values()].filter(e => passes(e, f));
+  const ctx = filterCtx();
+  let list = [...merged.values()].filter(e => passes(e, f, ctx));
   sortEntries(list, f.sort);
   rowsEl.innerHTML = "";
   // While a run is in flight and nothing has landed yet, show shimmer skeletons.
@@ -448,7 +413,7 @@ function rowFor(entry) {
   av.textContent = initials(j.company || j.title); av.style.background = avatarColor(j.company || j.title);
   const main = document.createElement("div"); main.className = "card-main";
   const t = document.createElement("div"); t.className = "card-title";
-  const a = document.createElement("a"); a.href = j.url; a.target = "_blank"; a.textContent = j.title;
+  const a = linkTo(document.createElement("a"), j.url); a.textContent = j.title;
   t.appendChild(a);
   if (entry.isNew) { const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; t.appendChild(b); }
   if (status === "applied") { const b = document.createElement("span"); b.className = "badge applied"; b.textContent = "APPLIED"; t.appendChild(b); }
@@ -463,6 +428,11 @@ function rowFor(entry) {
   if (entry._fit > 0) addMeta("★ " + entry._fit + "% match", "fit");
   addMeta(j.salary, "pay"); addMeta(j.exp, "");
   const mode = jobMode(j); if (mode) addMeta(mode[0].toUpperCase() + mode.slice(1), "mode");
+  // Distinct locations across the grouped postings — the signal that this card
+  // stands for more than one real listing.
+  const postings = [...(entry.postings ? entry.postings.values() : [])];
+  const locs = [...new Set(postings.map(p => p.location).filter(Boolean))];
+  if (locs.length > 1) addMeta(locs.length + " locations", "multi");
   if (j.jd) { const dt = document.createElement("button"); dt.className = "jd-toggle"; dt.textContent = "▾ details"; dt.onclick = () => { const p = card.querySelector(".jd"); const open = p.classList.toggle("open"); dt.textContent = open ? "▴ hide" : "▾ details"; }; metas.appendChild(dt); }
   if (metas.children.length) main.appendChild(metas);
   if (j.jd) { const p = document.createElement("div"); p.className = "jd"; p.textContent = j.jd + "…"; main.appendChild(p); }
@@ -471,6 +441,10 @@ function rowFor(entry) {
   const acts = document.createElement("div"); acts.className = "card-acts";
   const mkBtn = (label, val, title) => {
     const b = document.createElement("button"); b.className = "act" + (status === val ? " on" : ""); b.textContent = label; b.title = title;
+    // The glyph carries no meaning for a screen reader — name the action, and
+    // expose the toggle state rather than just colouring it.
+    b.setAttribute("aria-label", `${title}: ${j.title}${j.company ? " at " + j.company : ""}`);
+    b.setAttribute("aria-pressed", status === val ? "true" : "false");
     b.onclick = async e => {
       e.stopPropagation();
       const nv = status === val ? null : val;
@@ -484,8 +458,19 @@ function rowFor(entry) {
   const d = jobDays(j);
   const posted = document.createElement("div"); posted.className = "posted";
   posted.textContent = d == null ? "" : d === 0 ? "today" : d === 1 ? "1 day ago" : d < 30 ? d + " days ago" : "30+ days";
+  // Source pills are LINKS to the specific posting they came from, so a grouped
+  // card never hides a listing: N postings → N reachable URLs.
   const src = document.createElement("div"); src.className = "sources";
-  [...entry.sources].forEach(s => { const p = document.createElement("span"); p.className = "pill"; p.textContent = s; src.appendChild(p); });
+  if (postings.length) {
+    postings.forEach(p => {
+      const el = linkTo(document.createElement("a"), p.url, `Open on ${p.source}${p.location ? " — " + p.location : ""}`);
+      el.className = "pill";
+      el.textContent = p.source + (locs.length > 1 && p.location ? " · " + p.location : "");
+      src.appendChild(el);
+    });
+  } else {
+    [...entry.sources].forEach(s => { const p = document.createElement("span"); p.className = "pill"; p.textContent = s; src.appendChild(p); });
+  }
   side.append(acts, posted, src);
   card.append(av, main, side);
   return card;
@@ -518,13 +503,23 @@ async function sweepAts(id, shared, onFrac) {
     tokens,
     matchRx: m.matchRx, exRx: m.exRx, locRx,
     onJob: j => upsert(j, id),
-    onProgress: (done, total, found) => {
+    onProgress: (done, total, found, failed) => {
       setLight(id, "run", `${done}/${total} · ${found}`);
-      statusEl.textContent = `[${nameOf(id)}] ${done}/${total} companies · ${found} match(es)`;
+      statusEl.textContent = `[${nameOf(id)}] ${done}/${total} companies · ${found} match(es)`
+        + (failed ? ` · ${failed} unreachable` : "");
       if (onFrac) onFrac(total ? done / total : 0);
     }
   });
-  setLight(id, "done", `${r.found} found`);
+  // "0 found" because nobody is hiring and "0 found" because the API is dark are
+  // very different answers. Say which one it was.
+  const note = atsFailureNote(r);
+  const blackout = r.total > 0 && r.failed.length === r.total;
+  setLight(id, blackout ? "out" : "done", blackout ? "unreachable" : `${r.found} found${r.failed.length ? ` · ${r.failed.length} down` : ""}`);
+  if (note) {
+    statusEl.textContent = `[${nameOf(id)}] ⚠ ${note}`;
+    toast(`⚠ ${nameOf(id)}: ${note}`, "err");
+  }
+  return r;
 }
 
 // ---------- run ----------
@@ -583,8 +578,11 @@ async function searchAll() {
   running = false; $("search").disabled = false; $("search").textContent = "▶ Search selected";
   progressDone();
 
-  const allUrls = [...merged.values()].map(e => e.job.url).filter(Boolean);
-  await chrome.storage.local.set({ agg_seen: [...new Set([...seenAtStart, ...allUrls])].slice(-8000) });
+  // Remember every POSTING we saw, not one URL per group — otherwise the second
+  // listing in a group is permanently "new".
+  const allKeys = [];
+  for (const e of merged.values()) for (const pk of e.postings.keys()) allKeys.push(pk);
+  await chrome.storage.local.set({ agg_seen: [...new Set([...seenAtStart, ...allKeys])].slice(-8000) });
 
   const newCount = [...merged.values()].filter(e => e.isNew).length;
   statusEl.textContent = `✅ Done — ${merged.size} job(s), ${newCount} new.`;
@@ -601,7 +599,8 @@ function exportEntries() {
   const f = currentFilters();
   const terms = matchTerms();
   for (const e of merged.values()) e._fit = fitScore(e.job, terms);
-  return sortEntries([...merged.values()].filter(e => passes(e, f)), f.sort);
+  const ctx = filterCtx();
+  return sortEntries([...merged.values()].filter(e => passes(e, f, ctx)), f.sort);
 }
 function exportRow(e) {
   const j = e.job;
@@ -685,11 +684,9 @@ async function loadWatched() {
   const list = await jfGet(JF_KEYS.bgResults, []);
   const dayAgo = Date.now() - 86400000;
   merged = new Map(); activeSources = null;
-  for (const j of list) {
-    if (!j.title || !j.url) continue;
-    const entry = { job: j, sources: new Set([j.source || "ATS"]), isNew: j.firstSeen > dayAgo };
-    merged.set(jobKey(j), entry);
-  }
+  // Merge rather than set(): the stored pool is per-posting, so several records
+  // can share a jobKey — assigning would drop all but the last.
+  for (const j of list) mergeJob(j, j.source || "ATS", j.firstSeen > dayAgo);
   hasRun = true;
   document.querySelector("h1").firstChild.textContent = "Watched results ";
   $("exportBtn").disabled = merged.size === 0;
@@ -701,6 +698,7 @@ async function loadWatched() {
 // ---------- init ----------
 (async function init() {
   chrome.runtime.sendMessage({ type: "jf_clear_badge" }).catch(() => {});
+  await jfMigrate();          // no-op once the service worker has already run it
   await loadTrack();
   await loadHealth();
   await loadProfilesDropdown();
@@ -719,4 +717,5 @@ async function loadWatched() {
   // Start blank — the inputs show generic example placeholders; the user fills
   // in their own role/keywords. (No personal defaults baked in.)
   await recheckLogins();
+  showHealthWarnings();       // after recheckLogins — setLight() rewrites the status text
 })();

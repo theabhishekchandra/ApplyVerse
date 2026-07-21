@@ -1,0 +1,31 @@
+name: ATS seed health
+
+# The curated ATS_SEED tokens are the core asset of the ATS sweep, and they rot
+# silently: a company moves ATS or unpublishes its board, the token returns zero
+# jobs, and nothing inside the extension can tell that apart from "no matching
+# roles". This job checks them on a schedule so the decay becomes visible — a
+# failure here is a ready-made `good first issue` data PR.
+#
+# Deliberately NOT run on pull_request: it makes ~50 live third-party requests
+# and its result depends on the outside world, not on the diff.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"      # every Monday, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-seeds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify every ATS_SEED token still returns live jobs
+        run: node extension/scripts/check-seeds.js

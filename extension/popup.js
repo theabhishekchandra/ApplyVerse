@@ -128,7 +128,11 @@ function subtitle(j) {
 }
 function addRow(j) {
   const div = document.createElement("div"); div.className = "item";
-  const a = document.createElement("a"); a.href = j.url; a.target = "_blank"; a.textContent = j.title || "(untitled)";
+  // safeUrl() (rank.js): the scraper's URLs are untrusted page content, so only
+  // ever link out to http(s) — a `javascript:` URL would run in this popup.
+  const a = document.createElement("a"); a.textContent = j.title || "(untitled)";
+  const href = safeUrl(j.url);
+  if (href) { a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer"; }
   div.appendChild(a);
   if (j.url && !seenAtStart.has(j.url)) {
     const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; a.after(b);

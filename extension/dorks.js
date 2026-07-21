@@ -302,9 +302,11 @@ async function processCollected(items, allHrefs) {
 
   const all = richJobs.concat(directJobs.filter(j => !j._drop)).filter(j => j.title && j.url);
   const prev = await jfGet(JF_KEYS.bgResults, []);
-  const byKey = new Map(prev.map(j => [jfJobKey(j), j]));
+  // Per-POSTING key: two same-titled roles at one company in different cities
+  // are two listings, and collapsing them here would discard one of the URLs.
+  const byKey = new Map(prev.map(j => [postingKey(j), j]));
   const now = Date.now(); let added = 0;
-  for (const j of all) { const k = jfJobKey(j); if (!byKey.has(k)) { j.firstSeen = now; byKey.set(k, j); added++; } }
+  for (const j of all) { const k = postingKey(j); if (!byKey.has(k)) { j.firstSeen = now; byKey.set(k, j); added++; } }
   await chrome.storage.local.set({ [JF_KEYS.bgResults]: [...byKey.values()].sort((a, b) => (b.firstSeen || 0) - (a.firstSeen || 0)).slice(0, 800) });
 
   setBar(1, 1);

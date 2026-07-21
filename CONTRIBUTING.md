@@ -52,10 +52,12 @@ extension/
   background.js     # service worker — scheduled ATS sweep, notifications, badge
   sites.js          # registry of job-board scrapers (one entry per site)
   ats.js            # company-ATS module (Greenhouse/Lever/Ashby/Personio/…)
-  rank.js           # pure ranking/de-dup helpers (norm, jobKey, fitScore) — unit-tested
-  store.js          # chrome.storage helpers + key names
+  rank.js           # pure identity/ranking helpers (jobKey, postingKey, mergePosting, fitScore)
+  filters.js        # pure filter/sort predicates behind the results toolbar
+  store.js          # chrome.storage helpers, key names + schema migrations
   tour.js/.css      # first-run guided tour of the results page
   tests/            # node --test unit tests for the pure helpers (no deps)
+  scripts/          # pack.sh (build a shareable zip), check-seeds.js (ATS_SEED health)
 docs/               # deeper notes (add-a-provider, ATS/dorks, techniques)
 finders/            # the original standalone console scripts (reference)
 ```
@@ -67,12 +69,25 @@ finders/            # the original standalone console scripts (reference)
 - **No new runtime dependencies** and **no remote code** (MV3 forbids it, and it
   breaks Web Store review). Inline everything.
 - Storage keys live in `store.js` (`JF_KEYS`). Don't rename existing keys —
-  that orphans users' saved data.
+  that orphans users' saved data. If the *meaning* of a stored value has to
+  change, bump `JF_SCHEMA` and extend `jfMigrationPatch()` (it's pure, so cover
+  it with a test) rather than silently reinterpreting old data.
+- **Job identity has exactly two levels**, both defined once in `rank.js`:
+  `jobKey` (title|company) groups postings into one card, `postingKey`
+  (normalized URL) identifies one real listing. Use `jobKey` to display and
+  `postingKey` to remember. Never re-implement either — every page and the
+  service worker must agree or the same job counts as two.
 - Adding a **job board** or **ATS provider**? Follow the copy-paste recipe in
   **[`docs/ADD-A-PROVIDER.md`](docs/ADD-A-PROVIDER.md)** (endpoint/token details
   are in `docs/ATS-AND-DORKS.md`).
-- Touching the pure logic (`rank.js`, `ats.js`, `store.js`)? Add/adjust a test in
-  `extension/tests/` — they run under Node with **no dependencies**.
+- Touching the pure logic (`rank.js`, `filters.js`, `ats.js`, `store.js`)?
+  Add/adjust a test in `extension/tests/` — they run under Node with **no
+  dependencies**.
+- Adding a new source file? Add it to the `FILES` list in
+  `extension/scripts/pack.sh` (the build fails if you forget).
+- **Never let a failure look like an empty result.** If a fetch/scrape can't
+  reach its source, say so in the UI — "0 jobs found" and "we couldn't check"
+  must not render identically.
 
 ## Before you open a PR
 

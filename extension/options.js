@@ -119,7 +119,7 @@ $("runNow").addEventListener("click", async () => {
   $("runNow").disabled = true; $("runStatus").textContent = "Sweeping company APIs…";
   const r = await chrome.runtime.sendMessage({ type: "jf_run_now" });
   $("runNow").disabled = false;
-  if (r && r.ok) $("runStatus").textContent = `✅ ${r.total} matches · ${r.new} new`;
+  if (r && r.ok) $("runStatus").textContent = `✅ ${r.total} matches · ${r.new} new` + (r.failed ? ` · ⚠ ${r.failed} company API(s) unreachable` : "");
   else $("runStatus").textContent = `⚠ ${r && r.reason ? r.reason : "no result"}`;
   renderLastRun(); renderWatched();
 });
@@ -127,9 +127,15 @@ async function renderLastRun() {
   const lr = await jfGet(JF_KEYS.lastRun, null);
   if (!lr) { $("lastRun").textContent = ""; return; }
   const ago = timeAgo(lr.at);
+  // Always report unreachable companies: "0 new" after a sweep that couldn't
+  // reach anything means something very different from a quiet job market.
+  const partial = lr.ok && lr.failed
+    ? ` ⚠ ${lr.failed}/${lr.checked} company API(s) unreachable — results incomplete.`
+    : "";
   $("lastRun").textContent = lr.ok
-    ? `Last run ${ago}: ${lr.total} matches, ${lr.new} new${lr.profile ? " · " + lr.profile : ""}.`
-    : `Last run ${ago}: ${lr.reason}.`;
+    ? `Last run ${ago}: ${lr.total} matches, ${lr.new} new${lr.profile ? " · " + lr.profile : ""}.${partial}`
+    : `Last run ${ago}: ⚠ ${lr.reason}.`;
+  $("lastRun").classList.toggle("warn", !lr.ok || !!lr.failed);
 }
 
 // ---------- watched results ----------
@@ -141,7 +147,11 @@ async function renderWatched() {
   const dayAgo = Date.now() - 86400000;
   list.slice(0, 12).forEach(j => {
     const row = document.createElement("div"); row.className = "witem" + (j.firstSeen > dayAgo ? " fresh" : "");
-    const a = document.createElement("a"); a.href = j.url; a.target = "_blank"; a.textContent = j.title;
+    // safeUrl() (rank.js): these URLs came from scraped pages — never link to a
+    // `javascript:`/`data:` URL from inside an extension page.
+    const a = document.createElement("a"); a.textContent = j.title;
+    const href = safeUrl(j.url);
+    if (href) { a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer"; }
     const co = document.createElement("span"); co.className = "co"; co.textContent = j.company + (j.location ? " · " + j.location : "");
     row.append(a, co);
     if (j.firstSeen > dayAgo) { const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; row.appendChild(b); }

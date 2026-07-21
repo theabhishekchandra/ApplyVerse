@@ -99,6 +99,10 @@ input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow
 .prov:hover { border-color: rgba(124,92,255,.45); }
 .prov.on { border-color: rgba(124,92,255,.6); background: rgba(124,92,255,.12); }
 .prov.disabled { opacity: .4; cursor: default; }
+/* Scraper drift: this provider used to return jobs and now returns none, so its
+   selectors have probably gone stale. Persisted in jf_health and painted on load. */
+.prov.drift { border-color: rgba(255,176,70,.5); background: rgba(255,176,70,.08); }
+.prov.drift .pstatus { color: #ffc478; }
 .check { width: 19px; height: 19px; flex: 0 0 19px; border-radius: 6px; border: 1.5px solid rgba(255,255,255,.22); position: relative; transition: all .12s; }
 .prov:hover .check { border-color: var(--accent); }
 .prov.on .check { background: var(--grad-2); border-color: transparent; }
@@ -208,6 +212,14 @@ h1 .count { font-size: 12px; color: var(--muted); font-weight: 600; margin-left:
 .posted { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .sources { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; max-width: 190px; }
 .pill { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: rgba(62,166,255,.14); color: #9ec7ff; white-space: nowrap; }
+/* Source pills link to the individual posting they came from, so a grouped card
+   still exposes every underlying listing. */
+a.pill { text-decoration: none; transition: background .15s, color .15s; }
+a.pill:hover { background: rgba(62,166,255,.28); color: #d3e6ff; }
+a.pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A listing whose URL was missing or not http(s) — shown, but not clickable. */
+.nolink { color: var(--muted); cursor: not-allowed; text-decoration: line-through; }
+.meta.multi { color: #ffd9a8; background: rgba(255,176,70,.12); border-color: rgba(255,176,70,.28); }
 .muted { color: var(--muted); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 

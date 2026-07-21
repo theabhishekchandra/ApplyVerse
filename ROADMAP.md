@@ -13,6 +13,8 @@ labels.
   Recruitee/Workable seed tokens. See **[docs/ADD-A-PROVIDER.md](docs/ADD-A-PROVIDER.md)**.
 - **More job boards** — any site with a stable results page. Same doc, part B.
 - **Grow the `ATS_SEED` lists** with verified company tokens (a data-only PR).
+  The weekly **ATS seed health** workflow lists tokens that have gone dead —
+  replacing one is a perfect first PR.
 - **Docs & screenshots** — clearer setup, a short demo GIF, translations.
 
 ## 🟡 Features
@@ -22,18 +24,24 @@ labels.
 - **Better fit-scoring** — the current score is keyword overlap (`rank.js`).
   Ideas: weight recent postings, seniority alignment, location match. Keep it
   **local and dependency-free**.
-- **Duplicate detection across near-identical titles** (currently exact
-  normalized `title|company`).
+- **Fuzzy duplicate detection across near-identical titles** — grouping is exact
+  on normalized `title|company` (`jobKey`). "Sr. Backend Engineer" and "Senior
+  Backend Engineer" at one company still make two cards. Careful: postings are
+  tracked separately from groups (`postingKey`), so loosening the *group* key is
+  now safe — it can't destroy a listing. Don't merge distinct URLs away.
 - **Keyboard navigation** for the results list.
 - **Light theme** / theme toggle.
 
 ## 🔵 Quality & infra
 
-- **More unit tests** around the pure helpers (`rank.js`, `ats.js`, `store.js`)
-  — run with `node --test`, no deps.
-- **Accessibility pass** on the results and options pages.
-- **Provider health surfacing** — the extension already tracks drift
-  (`JF_KEYS.health`); show it in the UI.
+- **More unit tests** around the pure helpers (`rank.js`, `filters.js`,
+  `ats.js`, `store.js`) — run with `node --test`, no deps.
+- **Accessibility pass** on the results and options pages — the card action
+  buttons and login buttons are labelled; the cards themselves are still not
+  keyboard-navigable, and the options page hasn't been audited.
+- **Surface ATS seed rot in-app** — a weekly CI job
+  (`extension/scripts/check-seeds.js`) now reports dead `ATS_SEED` tokens, but
+  the extension itself doesn't tell you which of *your* discovered tokens died.
 
 ## 🚫 Out of scope (by design)
 

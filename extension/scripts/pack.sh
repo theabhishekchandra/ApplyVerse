@@ -21,7 +21,7 @@ VERSION="$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' manifest.json | h
 # Runtime files only. Add new source files here as the extension grows.
 FILES=(
   manifest.json
-  ats.js background.js dorks.js options.js popup.js rank.js results.js sites.js store.js tour.js
+  ats.js background.js dorks.js filters.js options.js popup.js rank.js results.js sites.js store.js tour.js
   dorks.css options.css popup.css results.css tour.css
   dorks.html options.html popup.html results.html
   icons
@@ -31,6 +31,26 @@ FILES=(
 for f in "${FILES[@]}"; do
   [ -e "$f" ] || { echo "✗ missing runtime file: $f"; exit 1; }
 done
+
+# ...and fail just as early if a file the extension actually LOADS was never
+# added to FILES above. A hand-maintained list silently ships a broken zip the
+# first time someone adds a source file and forgets this one — the runtime error
+# only shows up on a user's machine, so catch it at build time instead.
+MISSING=""
+for asset in $(grep -ho -E '(src|href)="[^"]+\.(js|css)"' ./*.html | sed -E 's/.*"(.*)"/\1/' | sort -u); do
+  case " ${FILES[*]} " in
+    *" $asset "*) ;;
+    *) MISSING="$MISSING $asset" ;;
+  esac
+done
+# The service worker's importScripts() is not in any HTML — check it too.
+for asset in $(grep -o -E 'importScripts\([^)]*\)' background.js | grep -o -E '[A-Za-z0-9_.-]+\.js'); do
+  case " ${FILES[*]} " in
+    *" $asset "*) ;;
+    *) MISSING="$MISSING $asset" ;;
+  esac
+done
+[ -z "$MISSING" ] || { echo "✗ loaded at runtime but not in pack.sh FILES:$MISSING"; exit 1; }
 
 # Validate manifest is parseable JSON (node if available, else python3).
 if command -v node >/dev/null 2>&1; then

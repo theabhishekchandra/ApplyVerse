@@ -119,10 +119,13 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- rank.js first: store.js, filters.js and results.js all use its
+       jobKey/postingKey identity helpers. -->
+  <script src="rank.js"></script>
   <script src="sites.js"></script>
   <script src="ats.js"></script>
   <script src="store.js"></script>
-  <script src="rank.js"></script>
+  <script src="filters.js"></script>
   <script src="results.js"></script>
   <script src="tour.js"></script>
 </body>

@@ -223,7 +223,7 @@ var ATS_SEED = {
     "tala", "safe", "ekohealth"
   ],
   ashby: [
-    "openai", "notion", "ramp", "cohere", "linear", "vercel", "replit", "perplexity",
+    "openai", "notion", "ramp", "cohere", "linear", "replit", "perplexity",
     "supabase", "posthog", "modal", "runway", "astronomer", "watershed",
     "bjakcareer", "patreon", "substack", "aspora"
   ],
@@ -290,11 +290,19 @@ async function atsFetchCompany(platform, token, opts) {
 }
 
 /* Sweep every seed company for a platform, bounded concurrency, streaming.
-   onJob(job) per matched job; onProgress(done,total,found) as it goes. */
+   onJob(job) per matched job; onProgress(done,total,found,failed) as it goes.
+
+   Returns { done, total, found, failed:[{token,status}] }. Reporting failures is
+   NOT cosmetic: a company whose API rate-limits, moves or 404s yields zero jobs,
+   which is indistinguishable from "this company has no matching roles" unless we
+   say so. Silent failure here previously let a whole platform go dark while the
+   UI cheerfully reported "0 found". status is the HTTP code, or -1 for a network
+   /parse error. */
 async function atsSweep(platform, opts) {
   opts = opts || {};
   const tokens = (opts.tokens || ATS_SEED[platform] || []).slice();
   const total = tokens.length;
+  const failed = [];
   let done = 0, found = 0, i = 0;
   const worker = async () => {
     while (i < tokens.length) {
@@ -305,13 +313,26 @@ async function atsSweep(platform, opts) {
       });
       done++;
       if (res.ok) for (const j of res.jobs) { found++; if (opts.onJob) opts.onJob(j); }
-      if (opts.onProgress) opts.onProgress(done, total, found);
+      else failed.push({ token, status: res.status });
+      if (opts.onProgress) opts.onProgress(done, total, found, failed.length);
       if (i < tokens.length) await _atsSleep(_atsJitter(ATS_CAP.pauseMs));   // polite, jittered gap
     }
   };
   const n = Math.min(opts.concurrency || ATS_CAP.concurrency, tokens.length || 1);
   await Promise.all(Array.from({ length: n }, worker));
-  return { done, total, found };
+  return { done, total, found, failed };
+}
+
+/* Human-readable summary of a sweep's failures, or "" when everything answered.
+   Distinguishes total blackout (endpoint moved / you are offline / rate-limited
+   across the board) from a few dead seed tokens, because the two need different
+   reactions from the user. */
+function atsFailureNote(res) {
+  if (!res || !res.failed || !res.failed.length) return "";
+  const n = res.failed.length, total = res.total || n;
+  const rate = res.failed.filter(f => f.status === 429 || f.status === 403).length;
+  if (n === total) return `all ${total} company APIs unreachable${rate ? " (rate-limited)" : ""} — results are incomplete`;
+  return `${n}/${total} companies unreachable${rate ? `, ${rate} rate-limited` : ""}`;
 }
 
 /* Build a keyword matcher from role + keyword text. Generic role words like
@@ -354,6 +375,6 @@ if (typeof module !== "undefined" && module.exports) {
     ATS_PLATFORMS, ATS_SEED, ATS_STOPWORDS,
     _atsText, _atsSalary, _atsExp, _atsApplyEnrich, _atsEnrich,
     _atsTitleCase, _atsIso, _atsRemote,
-    atsTokenFromUrl, atsMatchers, atsLocRx
+    atsTokenFromUrl, atsMatchers, atsLocRx, atsFailureNote
   };
 }
