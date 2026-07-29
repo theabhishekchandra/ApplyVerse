@@ -25,7 +25,9 @@ zip -r -X "$OUT" . \
   -x "tests/*" \
   -x "scripts/*" \
   -x "dist/*" \
-  -x "*.zip"
+  -x "*.zip" \
+  -x "README.md" \
+  -x "INSTALL.md"
 
 echo "Built $OUT"
 echo "Contents:"

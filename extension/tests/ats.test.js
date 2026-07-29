@@ -7,7 +7,7 @@ const {
   ATS_PLATFORMS,
   _atsText, _atsSalary, _atsExp, _atsApplyEnrich,
   _atsTitleCase, _atsIso, _atsRemote,
-  atsTokenFromUrl, atsMatchers, atsLocRx,
+  atsTokenFromUrl, atsMatchers, atsLocRx, atsFetchCompany,
 } = require("../ats.js");
 
 test("_atsText() strips HTML/entities to plain text", () => {
@@ -86,6 +86,15 @@ test("atsMatchers() falls back to the whole role when only stopwords remain", ()
   assert.ok(matchRx.test("Software Developer"));
 });
 
+test("atsMatchers() keeps short explicit keywords (language/skill abbreviations)", () => {
+  const { matchRx } = atsMatchers("engineer", "Go, R, ML, AI, C#", "");
+  assert.ok(matchRx.test("Go Engineer"));
+  assert.ok(matchRx.test("Senior R Developer"));
+  assert.ok(matchRx.test("ML Platform Engineer"));
+  assert.ok(matchRx.test("AI Researcher"));
+  assert.equal(matchRx.test("Backend Engineer"), false); // none of the short keywords present
+});
+
 test("atsLocRx() builds a regex from a places list (multi-word safe)", () => {
   const rx = atsLocRx("San Francisco, Remote");
   assert.ok(rx.test("San Francisco, CA"));
@@ -112,4 +121,17 @@ test("Greenhouse parser normalizes the public API shape", () => {
   assert.equal(job.posted, "2024-03-15");
   assert.equal(job.url, "https://boards.greenhouse.io/stripe/jobs/1");
   assert.equal(job.exp, "3-5 yrs");
+});
+
+test("atsFetchCompany() reports failure instead of throwing when a 200 response doesn't match the platform's expected shape", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({ status: 200, json: async () => null }); // greenhouse.parse does `data.jobs` — throws on null
+  try {
+    const res = await atsFetchCompany("greenhouse", "stripe", {});
+    assert.equal(res.ok, false);
+    assert.equal(res.status, -1);
+    assert.deepEqual(res.jobs, []);
+  } finally {
+    global.fetch = originalFetch;
+  }
 });

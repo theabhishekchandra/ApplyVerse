@@ -3,7 +3,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { JF_KEYS, JF_SCHEMA, JF_DEFAULT_SETTINGS, jfMigrationPatch } = require("../store.js");
+const { JF_KEYS, JF_SCHEMA, JF_DEFAULT_SETTINGS, jfMigrationPatch, jfDriftDetect, jfIsDrifted } = require("../store.js");
 const { postingKey } = require("../rank.js");
 
 test("default settings only sweep public, no-login ATS platforms", () => {
@@ -59,4 +59,24 @@ test("migration survives empty / missing storage", () => {
   const patch = jfMigrationPatch(undefined, {});
   assert.deepEqual(patch[JF_KEYS.seenBg], []);
   assert.ok(!("agg_seen" in patch), "absent key stays absent");
+});
+
+test("jfDriftDetect() flags a provider that used to reliably yield results but just returned zero", () => {
+  const health = {};
+  assert.equal(jfDriftDetect(health, "linkedin", 5), false);  // first run, no baseline yet
+  assert.equal(jfDriftDetect(health, "linkedin", 8), false);  // best now 8
+  assert.equal(jfDriftDetect(health, "linkedin", 0), true);   // used to find 8, now 0 -> drift
+  assert.ok(jfIsDrifted(health, "linkedin"));
+});
+
+test("jfDriftDetect() does not flag a provider that has never found more than a couple of jobs", () => {
+  const health = {};
+  jfDriftDetect(health, "niche", 1);
+  jfDriftDetect(health, "niche", 2);
+  assert.equal(jfDriftDetect(health, "niche", 0), false); // best (2) is not > 2, so 0 isn't suspicious
+  assert.equal(jfIsDrifted(health, "niche"), false);
+});
+
+test("jfIsDrifted() is false for a provider with no recorded history", () => {
+  assert.equal(jfIsDrifted({}, "unknown"), false);
 });

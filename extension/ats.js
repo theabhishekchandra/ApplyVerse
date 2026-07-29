@@ -262,7 +262,13 @@ async function atsFetchCompany(platform, token, opts) {
     if (r.status !== 200) return { ok: false, status: r.status, jobs: [] };
     data = isXml ? await r.text() : await r.json();
   } catch (e) { return { ok: false, status: -1, jobs: [] }; }
-  let jobs = def.parse(data, token).filter(j => j.title && j.url);
+  // A response that parses as JSON/XML but doesn't match the shape a platform's
+  // parser expects (e.g. an API error body, or a schema change) must not throw
+  // uncaught here — that would propagate through atsSweep and abort the whole
+  // sweep for every remaining company, not just this one.
+  let jobs;
+  try { jobs = def.parse(data, token).filter(j => j.title && j.url); }
+  catch (e) { return { ok: false, status: -1, jobs: [] }; }
   if (opts.matchRx || opts.exRx) {
     jobs = jobs.filter(j => {
       const hay = j.title + " " + (j.department || "");
@@ -353,18 +359,29 @@ function atsLocRx(locText) {
 }
 function atsMatchers(role, keywords, exclude) {
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const clean = arr => arr.map(s => s.trim()).filter(s => s.length > 2);
-  const kw = clean((keywords || "").split(/[,\s]+/));
-  const roleWords = clean((role || "").split(/\s+/)).filter(w => !ATS_STOPWORDS.has(w.toLowerCase()));
+  // A short (<=3 char), purely alphanumeric term (go/r/ml/ai/js) is anchored to
+  // whole-word boundaries — as a bare substring it would match inside unrelated
+  // words ("Go" in "Google", "R" in "Engineer"). Longer terms keep plain
+  // substring matching (unchanged), since false-positive risk there is low and
+  // it's relied on for partial matches like "react" catching "React.js".
+  const term = s => /^[a-zA-Z0-9]{1,3}$/.test(s) ? `\\b${esc(s)}\\b` : esc(s);
+  // Explicit keywords are user-typed and trusted as-is (no length filter) — short
+  // but meaningful terms like "Go", "R", "ML", "AI", "C#" must survive. Only
+  // role WORDS get length-filtered, since the role field is free text ("android
+  // developer") where 1-2 char fragments are noise, not a language name.
+  const cleanKw = arr => arr.map(s => s.trim()).filter(Boolean);
+  const cleanRole = arr => arr.map(s => s.trim()).filter(s => s.length > 2);
+  const kw = cleanKw((keywords || "").split(/[,\s]+/));
+  const roleWords = cleanRole((role || "").split(/\s+/)).filter(w => !ATS_STOPWORDS.has(w.toLowerCase()));
   // Prefer explicit keywords + specific role words; fall back to whole role if
   // everything got filtered out (so a generic role still returns results).
   let terms = kw.concat(roleWords);
-  if (!terms.length) terms = clean((role || "").split(/\s+/));
+  if (!terms.length) terms = cleanRole((role || "").split(/\s+/));
   terms = [...new Set(terms)];
   const ex = (exclude || "").split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
   return {
-    matchRx: terms.length ? new RegExp(terms.map(esc).join("|"), "i") : null,
-    exRx: ex.length ? new RegExp(ex.map(esc).join("|"), "i") : null
+    matchRx: terms.length ? new RegExp(terms.map(term).join("|"), "i") : null,
+    exRx: ex.length ? new RegExp(ex.map(term).join("|"), "i") : null
   };
 }
 
@@ -375,6 +392,6 @@ if (typeof module !== "undefined" && module.exports) {
     ATS_PLATFORMS, ATS_SEED, ATS_STOPWORDS,
     _atsText, _atsSalary, _atsExp, _atsApplyEnrich, _atsEnrich,
     _atsTitleCase, _atsIso, _atsRemote,
-    atsTokenFromUrl, atsMatchers, atsLocRx, atsFailureNote
+    atsTokenFromUrl, atsMatchers, atsLocRx, atsFailureNote, atsFetchCompany
   };
 }

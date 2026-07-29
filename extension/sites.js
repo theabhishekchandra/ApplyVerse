@@ -68,13 +68,20 @@ var SITES = {
         const items = (list && list.itemListElement) || [];
         const cards = [...doc.querySelectorAll('div[class*="job_result"]')];
         if (!items.length) { say(`Page ${page}: no jobs — last page.`); break; }
+        // The ld+json list and the rendered cards are two independent DOM reads
+        // paired only by array position — if their counts ever diverge (an ad
+        // card, a card that failed to hydrate), that pairing is unreliable and
+        // must not be trusted; every job on the page would otherwise silently
+        // get some OTHER job's company/location/salary. Title/url stay correct
+        // either way since those come from ld+json alone.
+        const cardsAligned = cards.length === items.length;
         let hits = 0;
         for (let i = 0; i < items.length; i++) {
           const it = items[i];
           const title = (it.name || "").trim();
           const url = it.url || "";
           if (!title || !url || seen.has(url)) continue;
-          const card = cards[i];
+          const card = cardsAligned ? cards[i] : null;
           const company = tc(card, '[data-testid="job-card-company"]');
           const cloc = tc(card, '[data-testid="job-card-location"]');
           const salary = ((card && card.innerText || "").match(/[$₹]\s?[\d.,]+\s?[KkMm]?(?:\s?[-–]\s?[$₹]?\s?[\d.,]+\s?[KkMm]?)?(?:\s?\/\s?(?:yr|hr|hour|year|month))?/) || ["—"])[0];
@@ -85,7 +92,7 @@ var SITES = {
           const rec = { title, company, location: cloc, salary, url };
           matches.push(rec); report(rec); hits++;
         }
-        say(`page ${page}: ${items.length} jobs, ${hits} match. Total: ${matches.length}`);
+        say(`page ${page}: ${items.length} jobs, ${hits} match${cardsAligned ? "" : " (card layout changed — company/location/salary skipped this page)"}. Total: ${matches.length}`);
         if (cfg.stop && matches.length >= cfg.stop) { say(`Reached ${cfg.stop} — stopping.`); break; }
         await delay(600);
       }
@@ -543,13 +550,18 @@ var SITES = {
       const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
       const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
       const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      // Mirrors ats.js's _atsText/_atsSalary/_atsExp — kept in sync by hand since
+      // this function is stringified for executeScript and can't import them.
+      const jdText = h => (h ? String(h).replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim() : "");
+      const jdSalary = t => { if (!t) return ""; let m = t.match(/(?:₹|INR|Rs\.?)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:-|–|to)\s?(?:₹|INR|Rs\.?)?\s?\d[\d,]*(?:\.\d+)?)?\s?(?:LPA|lakhs?|per annum)?/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\d[\d.]*\s?(?:-|–|to)\s?\d[\d.]*\s?(?:LPA|lakhs?)\b/i) || t.match(/\d[\d.]*\s?(?:LPA|lakhs?)\b/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\$\s?\d[\d,]*(?:\.\d+)?[kK]?(?:\s?(?:-|–|to)\s?\$?\s?\d[\d,]*(?:\.\d+)?[kK]?)?/); if (m) return m[0].replace(/\s+/g, " ").trim(); return ""; };
+      const jdExp = t => { if (!t) return ""; let m = t.match(/(\d{1,2})\s?\+?\s?(?:-|–|to)\s?(\d{1,2})\s?\+?\s?years?/i); if (m) return `${m[1]}-${m[2]} yrs`; m = t.match(/(\d{1,2})\s?\+\s?years?/i); if (m) return `${m[1]}+ yrs`; m = t.match(/(?:minimum|at least|min\.?)\s?(?:of\s?)?(\d{1,2})\+?\s?years?/i) || t.match(/(\d{1,2})\+?\s?years?\s?(?:of\s?)?(?:relevant\s?)?experience/i); if (m) return `${m[1]}+ yrs`; return ""; };
       if (!cfg.company) { say("⚠ Enter a board token (boards.greenhouse.io/<token>)."); return []; }
       const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
       const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
       say(`Fetching Greenhouse board "${cfg.company}"…`);
       let data;
       try {
-        const r = await fetch(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(cfg.company)}/jobs`, { headers: { Accept: "application/json" } });
+        const r = await fetch(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(cfg.company)}/jobs?content=true`, { headers: { Accept: "application/json" } });
         if (r.status !== 200) { say(`HTTP ${r.status} — check the board token.`); return []; }
         data = await r.json();
       } catch (e) { say("request failed — is the token correct?"); return []; }
@@ -560,6 +572,8 @@ var SITES = {
         if (exRx && exRx.test(title)) continue;
         const rec = { title, company: j.company_name || tc(cfg.company), location: (j.location && j.location.name) || "", posted: (j.updated_at || "").slice(0, 10), url: j.absolute_url || "" };
         if (!rec.url) continue;
+        const jd = jdText(j.content);
+        if (jd) { rec.jd = jd.slice(0, 400); rec.salary = jdSalary(jd); rec.exp = jdExp(jd); }
         matches.push(rec); report(rec);
         if (matches.length >= cfg.maxJobs) break;
       }
@@ -583,6 +597,11 @@ var SITES = {
       const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
       const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
       const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      // Mirrors ats.js's _atsText/_atsSalary/_atsExp — kept in sync by hand since
+      // this function is stringified for executeScript and can't import them.
+      const jdText = h => (h ? String(h).replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim() : "");
+      const jdSalary = t => { if (!t) return ""; let m = t.match(/(?:₹|INR|Rs\.?)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:-|–|to)\s?(?:₹|INR|Rs\.?)?\s?\d[\d,]*(?:\.\d+)?)?\s?(?:LPA|lakhs?|per annum)?/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\d[\d.]*\s?(?:-|–|to)\s?\d[\d.]*\s?(?:LPA|lakhs?)\b/i) || t.match(/\d[\d.]*\s?(?:LPA|lakhs?)\b/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\$\s?\d[\d,]*(?:\.\d+)?[kK]?(?:\s?(?:-|–|to)\s?\$?\s?\d[\d,]*(?:\.\d+)?[kK]?)?/); if (m) return m[0].replace(/\s+/g, " ").trim(); return ""; };
+      const jdExp = t => { if (!t) return ""; let m = t.match(/(\d{1,2})\s?\+?\s?(?:-|–|to)\s?(\d{1,2})\s?\+?\s?years?/i); if (m) return `${m[1]}-${m[2]} yrs`; m = t.match(/(\d{1,2})\s?\+\s?years?/i); if (m) return `${m[1]}+ yrs`; m = t.match(/(?:minimum|at least|min\.?)\s?(?:of\s?)?(\d{1,2})\+?\s?years?/i) || t.match(/(\d{1,2})\+?\s?years?\s?(?:of\s?)?(?:relevant\s?)?experience/i); if (m) return `${m[1]}+ yrs`; return ""; };
       if (!cfg.company) { say("⚠ Enter a company token (jobs.lever.co/<token>)."); return []; }
       const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
       const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
@@ -601,8 +620,12 @@ var SITES = {
         if (exRx && exRx.test(title)) continue;
         let loc = c.location || (c.allLocations || []).join(", ");
         if (/remote/i.test(j.workplaceType || "") && !/remote/i.test(loc)) loc = (loc ? loc + " " : "") + "(remote)";
-        const rec = { title, company: tc(cfg.company), location: loc, department: c.department || c.team || "", posted: (j.createdAt ? new Date(j.createdAt).toISOString().slice(0, 10) : ""), url: j.hostedUrl || j.applyUrl || "" };
+        const sal = j.salaryRange && (j.salaryRange.min || j.salaryRange.max)
+          ? `${j.salaryRange.currency || ""} ${j.salaryRange.min || ""}${j.salaryRange.max ? "–" + j.salaryRange.max : ""}`.trim() : "";
+        const rec = { title, company: tc(cfg.company), location: loc, salary: sal, department: c.department || c.team || "", posted: (j.createdAt ? new Date(j.createdAt).toISOString().slice(0, 10) : ""), url: j.hostedUrl || j.applyUrl || "" };
         if (!rec.url) continue;
+        const jd = jdText(j.descriptionPlain || j.description);
+        if (jd) { rec.jd = jd.slice(0, 400); if (!rec.salary) rec.salary = jdSalary(jd); rec.exp = jdExp(jd); }
         matches.push(rec); report(rec);
         if (matches.length >= cfg.maxJobs) break;
       }
@@ -626,6 +649,11 @@ var SITES = {
       const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
       const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
       const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      // Mirrors ats.js's _atsText/_atsSalary/_atsExp — kept in sync by hand since
+      // this function is stringified for executeScript and can't import them.
+      const jdText = h => (h ? String(h).replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim() : "");
+      const jdSalary = t => { if (!t) return ""; let m = t.match(/(?:₹|INR|Rs\.?)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:-|–|to)\s?(?:₹|INR|Rs\.?)?\s?\d[\d,]*(?:\.\d+)?)?\s?(?:LPA|lakhs?|per annum)?/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\d[\d.]*\s?(?:-|–|to)\s?\d[\d.]*\s?(?:LPA|lakhs?)\b/i) || t.match(/\d[\d.]*\s?(?:LPA|lakhs?)\b/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\$\s?\d[\d,]*(?:\.\d+)?[kK]?(?:\s?(?:-|–|to)\s?\$?\s?\d[\d,]*(?:\.\d+)?[kK]?)?/); if (m) return m[0].replace(/\s+/g, " ").trim(); return ""; };
+      const jdExp = t => { if (!t) return ""; let m = t.match(/(\d{1,2})\s?\+?\s?(?:-|–|to)\s?(\d{1,2})\s?\+?\s?years?/i); if (m) return `${m[1]}-${m[2]} yrs`; m = t.match(/(\d{1,2})\s?\+\s?years?/i); if (m) return `${m[1]}+ yrs`; m = t.match(/(?:minimum|at least|min\.?)\s?(?:of\s?)?(\d{1,2})\+?\s?years?/i) || t.match(/(\d{1,2})\+?\s?years?\s?(?:of\s?)?(?:relevant\s?)?experience/i); if (m) return `${m[1]}+ yrs`; return ""; };
       if (!cfg.company) { say("⚠ Enter a company token (jobs.ashbyhq.com/<token>)."); return []; }
       const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
       const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
@@ -647,6 +675,8 @@ var SITES = {
         const comp = j.compensation && j.compensation.compensationTierSummary || "";
         const rec = { title, company: tc(cfg.company), location: loc, salary: comp, department: j.department || j.team || "", posted: (j.publishedAt || "").slice(0, 10), url: j.jobUrl || j.applyUrl || "" };
         if (!rec.url) continue;
+        const jd = jdText(j.descriptionPlain || j.descriptionHtml);
+        if (jd) { rec.jd = jd.slice(0, 400); if (!rec.salary) rec.salary = jdSalary(jd); rec.exp = jdExp(jd); }
         matches.push(rec); report(rec);
         if (matches.length >= cfg.maxJobs) break;
       }
@@ -714,6 +744,11 @@ var SITES = {
       const report = j => { try { chrome.runtime.sendMessage({ type: "job", job: j }).catch(() => {}); } catch (e) {} };
       const say = t => { try { chrome.runtime.sendMessage({ type: "status", text: t }).catch(() => {}); } catch (e) {} };
       const tc = s => (s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      // Mirrors ats.js's _atsText/_atsSalary/_atsExp — kept in sync by hand since
+      // this function is stringified for executeScript and can't import them.
+      const jdText = h => (h ? String(h).replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim() : "");
+      const jdSalary = t => { if (!t) return ""; let m = t.match(/(?:₹|INR|Rs\.?)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:-|–|to)\s?(?:₹|INR|Rs\.?)?\s?\d[\d,]*(?:\.\d+)?)?\s?(?:LPA|lakhs?|per annum)?/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\d[\d.]*\s?(?:-|–|to)\s?\d[\d.]*\s?(?:LPA|lakhs?)\b/i) || t.match(/\d[\d.]*\s?(?:LPA|lakhs?)\b/i); if (m) return m[0].replace(/\s+/g, " ").trim(); m = t.match(/\$\s?\d[\d,]*(?:\.\d+)?[kK]?(?:\s?(?:-|–|to)\s?\$?\s?\d[\d,]*(?:\.\d+)?[kK]?)?/); if (m) return m[0].replace(/\s+/g, " ").trim(); return ""; };
+      const jdExp = t => { if (!t) return ""; let m = t.match(/(\d{1,2})\s?\+?\s?(?:-|–|to)\s?(\d{1,2})\s?\+?\s?years?/i); if (m) return `${m[1]}-${m[2]} yrs`; m = t.match(/(\d{1,2})\s?\+\s?years?/i); if (m) return `${m[1]}+ yrs`; m = t.match(/(?:minimum|at least|min\.?)\s?(?:of\s?)?(\d{1,2})\+?\s?years?/i) || t.match(/(\d{1,2})\+?\s?years?\s?(?:of\s?)?(?:relevant\s?)?experience/i); if (m) return `${m[1]}+ yrs`; return ""; };
       if (!cfg.company) { say("⚠ Enter a subdomain token (<token>.recruitee.com)."); return []; }
       const kwRx = cfg.keywords.length ? new RegExp(cfg.keywords.map(esc).join("|"), "i") : null;
       const exRx = cfg.exclude.length ? new RegExp(cfg.exclude.map(esc).join("|"), "i") : null;
@@ -732,6 +767,8 @@ var SITES = {
         let loc = j.location || [j.city, j.country].filter(Boolean).join(", ");
         const rec = { title, company: tc(cfg.company), location: loc, department: j.department || "", posted: (j.published_at || j.created_at || "").slice(0, 10), url: j.careers_url || j.careers_apply_url || "" };
         if (!rec.url) continue;
+        const jd = jdText(j.description);
+        if (jd) { rec.jd = jd.slice(0, 400); rec.salary = jdSalary(jd); rec.exp = jdExp(jd); }
         matches.push(rec); report(rec);
         if (matches.length >= cfg.maxJobs) break;
       }

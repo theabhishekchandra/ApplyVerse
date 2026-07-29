@@ -250,9 +250,6 @@
     if (link) link.addEventListener("click", function (e) { e.preventDefault(); start(); });
   }
 
-  // public API (also lets results.js trigger it if ever needed)
-  window.avTour = { start: start, finish: finish };
-
   function boot() {
     wireReplayLink();
     getDone().then(function (done) {

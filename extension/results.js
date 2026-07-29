@@ -90,23 +90,19 @@ function matchTerms() {
 // fitScore(job, terms) is defined in rank.js (loaded before this script).
 
 // ---------- provider health / drift detection (Tier 3) ----------
+// jfDriftDetect/jfIsDrifted (store.js) are shared with popup.js so drift found
+// via either UI shows up in both, keyed by the same provider id.
 let health = {};
 async function loadHealth() { health = (await jfGet(JF_KEYS.health, {})) || {}; }
 async function recordHealth(id, count) {
-  const h = health[id] || { best: 0, lastCount: 0 };
-  const drift = h.best > 2 && count === 0;   // used to reliably yield, now zero → likely selector drift
-  h.lastCount = count; h.best = Math.max(h.best || 0, count); h.at = Date.now();
-  health[id] = h;
+  const drift = jfDriftDetect(health, id, count);
   await chrome.storage.local.set({ [JF_KEYS.health]: health });
   return drift;
 }
 // Is a provider currently suspected of scraper drift? (Recorded on every run;
 // this reads it back so the warning survives a page reload instead of only
 // existing for the seconds after the run that detected it.)
-function driftedNow(id) {
-  const h = health[id];
-  return !!(h && h.best > 2 && h.lastCount === 0);
-}
+function driftedNow(id) { return jfIsDrifted(health, id); }
 // Paint stored drift onto the provider rows at load time. Without this the
 // health data was written on every run and then never read by anything.
 function showHealthWarnings() {
@@ -541,7 +537,16 @@ async function searchAll() {
   for (const id of selected) {
     currentProvider = id;
     if (provState[id].ats) {
-      await sweepAts(id, shared, f => progressSet((doneN + f) / total));
+      // Defense in depth: atsFetchCompany already guards against a single bad
+      // response taking down the sweep, but this still must not let ANY
+      // unexpected throw abort the remaining providers / leave the UI stuck
+      // mid-search, same as the DOM-scrape branch below.
+      try {
+        await sweepAts(id, shared, f => progressSet((doneN + f) / total));
+      } catch (e) {
+        setLight(id, "out", "error");
+        statusEl.textContent = `[${nameOf(id)}] error: ${e && e.message ? e.message : e}`;
+      }
       doneN++; progressSet(doneN / total); continue;
     }
     setLight(id, "run", "running…");
@@ -646,9 +651,14 @@ document.addEventListener("click", e => { if (!e.target.closest(".export-wrap"))
 async function loadProfilesDropdown() {
   const sel = $("profileSel");
   const profiles = await jfGetProfiles();
-  const active = await jfGetActive();
   sel.innerHTML = '<option value="">— Saved profiles —</option>';
-  profiles.forEach(p => { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name || "(unnamed)"; if (p.id === active) o.selected = true; sel.appendChild(o); });
+  // Leave the placeholder selected here, even though one profile may already be
+  // the background watcher's "active" one — the search form starts blank on
+  // this page (by design), so the dropdown's value must start blank too.
+  // Pre-selecting the active profile's <option> made it look already loaded;
+  // picking that same option then fired no `change` event (the value hadn't
+  // actually changed), so nothing happened — the exact bug this avoids.
+  profiles.forEach(p => { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name || "(unnamed)"; sel.appendChild(o); });
 }
 $("profileSel").addEventListener("change", async e => {
   const id = e.target.value; if (!id) return;
@@ -680,7 +690,10 @@ async function loadWatched() {
   const profiles = await jfGetProfiles();
   const activeId = await jfGetActive();
   const prof = profiles.find(p => p.id === activeId) || profiles[0];
-  if (prof) { $("role").value = prof.role || ""; $("keywords").value = prof.keywords || ""; $("exclude").value = prof.exclude || ""; $("loc").value = prof.location || ""; }
+  if (prof) {
+    $("role").value = prof.role || ""; $("keywords").value = prof.keywords || ""; $("exclude").value = prof.exclude || ""; $("loc").value = prof.location || "";
+    $("profileSel").value = prof.id;   // keep the dropdown in sync with the fields it just filled
+  }
   const list = await jfGet(JF_KEYS.bgResults, []);
   const dayAgo = Date.now() - 86400000;
   merged = new Map(); activeSources = null;

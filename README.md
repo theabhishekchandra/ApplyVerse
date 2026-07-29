@@ -76,7 +76,7 @@ file, hit **↻ reload** on the extension card. Build a shareable zip anytime wi
 | | Feature | What it does |
 |---|---|---|
 | 🔀 | **Aggregate** | Search many job boards at once; results merge into one de-duplicated table. |
-| 🎯 | **ATS sweep** | Pulls jobs straight from Greenhouse / Lever / Ashby / Personio public APIs. |
+| 🎯 | **ATS sweep** | Pulls jobs straight from Greenhouse / Lever / Ashby / Workable / Personio / Recruitee public APIs. |
 | 🔎 | **Dork builder** | Builds targeted Google searches for company ATS pages, then **Auto-collects** and stores them. |
 | ⭐ | **Fit score** | Ranks each job by how well it matches your role + keywords. |
 | 🧪 | **JD enrichment** | Mines salary & experience from each posting's full description (free, no extra request). |
@@ -91,7 +91,7 @@ file, hit **↻ reload** on the extension card. Build a shareable zip anytime wi
 flowchart LR
   A["Your search<br/>role · keywords · location"] --> B((ApplyVerse))
   B --> C["Job boards<br/>LinkedIn · Naukri · …<br/>on click"]
-  B --> D["Company ATS APIs<br/>Greenhouse · Lever · Ashby · Personio"]
+  B --> D["Company ATS APIs<br/>Greenhouse · Lever · Ashby · Workable · Personio · Recruitee"]
   B --> E["Google-dork builder<br/>ATS pages Google indexed"]
   C --> F["Merge + de-duplicate"]
   D --> F

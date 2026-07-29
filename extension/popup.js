@@ -13,6 +13,21 @@ let lastMatches = [];      // authoritative result of the last run
 let seenAtStart = new Set(); // seen-URL set loaded before the run (for NEW badges)
 let running = false;
 
+// ---------- provider health / drift detection ----------
+// Shares JF_KEYS.health + jfDriftDetect/jfIsDrifted (store.js) with results.js,
+// keyed by the same SITES id — a scraper that breaks doesn't go unnoticed just
+// because the user happened to run it from the popup instead of "search all".
+// Only meaningful for sites tied to one fixed domain (site.match set); the
+// per-company providers (SmartRecruiters/*_co) have no stable job-count
+// baseline since the count depends on whichever company token was typed.
+let health = {};
+async function loadHealth() { health = (await jfGet(JF_KEYS.health, {})) || {}; }
+async function recordHealth(id, count) {
+  const drift = jfDriftDetect(health, id, count);
+  await chrome.storage.local.set({ [JF_KEYS.health]: health });
+  return drift;
+}
+
 // ---------- helpers ----------
 const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
 const hostOf = url => { try { return new URL(url).hostname; } catch { return ""; } };
@@ -201,6 +216,13 @@ async function start() {
   statusEl.textContent = `✅ Done — ${matches.length} match(es), ${newOnes.length} new since last run.`;
   csvBtn.disabled = matches.length === 0;
 
+  // A site tied to a fixed domain that used to reliably yield results but just
+  // returned zero is a suspected scraper break, not "no matching jobs" — say so.
+  if (SITES[siteId].match) {
+    const drift = await recordHealth(siteId, matches.length);
+    if (drift) statusEl.textContent = `⚠ 0 results, but ${SITES[siteId].name} usually finds some — the site layout may have changed (scraper drift).`;
+  }
+
   if (openTabsEl.checked) {
     const toOpen = (onlyNewEl.checked ? newOnes : matches).slice(0, 25);
     for (const m of toOpen) if (m.url) chrome.tabs.create({ url: m.url, active: false });
@@ -240,6 +262,7 @@ csvBtn.addEventListener("click", downloadCsv);
 
 (async function init() {
   chrome.runtime.sendMessage({ type: "jf_clear_badge" }).catch(() => {});
+  await loadHealth();
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   activeTab = tab || null;
   const detected = activeTab ? detectSiteId(hostOf(activeTab.url)) : null;

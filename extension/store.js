@@ -87,8 +87,27 @@ async function jfMigrate() {
 
 function jfId() { return "p" + Math.abs(Date.now() ^ Math.floor(performance.now() * 1000)).toString(36); }
 
+/* ---------- provider health / scraper-drift detection ----------
+   Shared by both results.js (the "search all" page) and popup.js (the
+   single-site direct flow), keyed by the same provider id (a SITES/ATS_PLATFORMS
+   key) so drift detected via one UI is visible in the other — a scraper that
+   breaks doesn't go unnoticed just because the user happens to use the popup.
+   Pure (no storage I/O) so it's unit-testable; callers own reading/writing the
+   `health` map to chrome.storage.local under JF_KEYS.health. */
+function jfDriftDetect(health, id, count) {
+  const h = health[id] || { best: 0, lastCount: 0 };
+  const drift = h.best > 2 && count === 0;   // used to reliably yield, now zero → likely selector drift
+  h.lastCount = count; h.best = Math.max(h.best || 0, count); h.at = Date.now();
+  health[id] = h;
+  return drift;
+}
+function jfIsDrifted(health, id) {
+  const h = health[id];
+  return !!(h && h.best > 2 && h.lastCount === 0);
+}
+
 // Export the pure/schema bits for Node unit tests. No-op in the browser and the
 // service worker (importScripts) — neither defines `module`.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { JF_KEYS, JF_SCHEMA, JF_DEFAULT_SETTINGS, jfMigrationPatch };
+  module.exports = { JF_KEYS, JF_SCHEMA, JF_DEFAULT_SETTINGS, jfMigrationPatch, jfDriftDetect, jfIsDrifted };
 }
