@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ApplyVerse",
   "version": "1.4.0",
-  "description": "Aggregate developer jobs across 12 boards + company ATS (Greenhouse/Lever/Ashby/Workable/Personio/Recruitee) — token-sweep, Google-dork builder, scheduled watch, fit-scoring, apply-tracking, export.",
+  "description": "Aggregate developer jobs from 12 job boards and company ATS (Greenhouse, Lever, Ashby) into one de-duplicated, fit-scored list.",
   "permissions": ["scripting", "storage", "activeTab", "tabs", "downloads", "cookies", "alarms", "notifications"],
   "host_permissions": [
     "https://*.ziprecruiter.com/*",

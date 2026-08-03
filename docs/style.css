@@ -1,0 +1,77 @@
+/* Shared styles for the ApplyVerse GitHub Pages site (index.html, privacy.html). */
+
+:root {
+  --bg: #0d1017;
+  --surface: #151a24;
+  --border: #232a38;
+  --text: #e6e9f0;
+  --muted: #9aa4b8;
+  --violet: #8b6bff;
+  --blue: #3ea6ff;
+  --teal: #34e2d0;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff; --surface: #f6f8fc; --border: #e2e7f0;
+    --text: #121722; --muted: #5a6478;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+a { color: var(--blue); }
+
+header { padding: 64px 0 48px; text-align: center; }
+header img { width: 100%; max-width: 720px; height: auto; }
+h1 {
+  font-size: clamp(30px, 5vw, 44px); line-height: 1.15; margin: 28px 0 12px;
+  letter-spacing: -0.02em;
+}
+.tagline { font-size: clamp(17px, 2.4vw, 20px); color: var(--muted); margin: 0 auto; max-width: 620px; }
+
+.cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 32px; }
+.btn {
+  display: inline-block; padding: 12px 22px; border-radius: 10px;
+  font-weight: 600; text-decoration: none; border: 1px solid var(--border);
+  color: var(--text); background: var(--surface);
+}
+.btn.primary {
+  background: linear-gradient(120deg, var(--violet), var(--blue) 55%, var(--teal));
+  color: #0d1017; border-color: transparent;
+}
+
+section { padding: 44px 0; border-top: 1px solid var(--border); }
+h2 { font-size: 24px; letter-spacing: -0.01em; margin: 0 0 20px; }
+h3 { font-size: 17px; margin: 0 0 6px; }
+
+.grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+ol, ul { padding-left: 22px; }
+ol li, ul li { margin-bottom: 10px; }
+code {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 2px 6px; border-radius: 5px; font-size: 0.9em;
+}
+
+figure { margin: 0 0 24px; }
+figure img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 12px; display: block; }
+figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; text-align: center; }
+
+/* Wide content must scroll inside itself, never the page. */
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--text); font-weight: 600; white-space: nowrap; }
+td { color: var(--muted); }
+
+footer { border-top: 1px solid var(--border); padding: 32px 0 56px; color: var(--muted); font-size: 15px; text-align: center; }
+footer a { margin: 0 8px; }

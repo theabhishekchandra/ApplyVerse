@@ -40,18 +40,44 @@ the store rejects a re-used version.
 **Single purpose (store requirement):** "Aggregate developer job listings from
 public job boards and company ATS pages into one searchable, filterable list."
 
-**Privacy:** the extension stores everything **locally** (`chrome.storage.local`)
-and sends **no** user data to any server of ours — it only calls the public job
-boards / ATS APIs you're searching. State this in the listing's privacy section;
-no remote code is loaded (all scripts are bundled).
+**Privacy policy URL (required):** because the extension requests `cookies`,
+`tabs`, `scripting` and broad host permissions, the dashboard **will not let you
+submit** without a publicly reachable privacy policy. Use the hosted copy:
+
+> `https://theabhishekchandra.github.io/ApplyVerse/privacy.html`
+
+Its source is [`docs/privacy.html`](privacy.html), which mirrors the root
+[`PRIVACY.md`](../PRIVACY.md) — **edit both together** if the data practices
+change. The page is served by GitHub Pages from the `docs/` folder on `main`
+(Settings → Pages → Source: *Deploy from a branch* → `main` / `/docs`).
+
+In the listing's privacy section, state: the extension stores everything
+**locally** (`chrome.storage.local`) and sends **no** user data to any server of
+ours — it only calls the public job boards / ATS APIs you're searching, and no
+remote code is loaded (all scripts are bundled).
 
 ## Listing assets to prepare
 
 - **Icon** — `icons/icon128.png` (already in repo).
-- **Screenshots** — 1280×800 or 640×400: the results dashboard, the ATS sweep in
-  progress, the dork builder, and the automation/settings page.
-- **Short description** (≤132 chars) — see `manifest.json` `description`.
-- **Detailed description** — adapt `extension/README.md`.
+- **Screenshots** — **exactly** 1280×800 or 640×400 (a 1.6 ratio; the store
+  rejects other sizes): the results dashboard, the ATS sweep in progress, the
+  dork builder, and the automation/settings page.
+  ⚠️ The images in `docs/images/` are **1568×684** — a 2.29 ratio, so they cannot
+  be resized into spec. Retake these at 1280×800.
+- **Short description** — the `description` in `manifest.json`, which the store
+  caps at **132 characters** and rejects above it. Verify before every upload:
+
+  ```bash
+  node -e "const d=require('./extension/manifest.json').description; \
+    console.log(d.length, d.length<=132 ? 'OK' : 'TOO LONG')"
+  ```
+
+- **Privacy policy URL** — `https://theabhishekchandra.github.io/ApplyVerse/privacy.html`
+  (see above; required, not optional).
+- **Detailed description** — paste-ready copy lives in
+  [`STORE-LISTING.md`](STORE-LISTING.md). Write it from the **root**
+  [`README.md`](../README.md) (the user-facing pitch), *not*
+  `extension/README.md`, which is developer docs.
 
 ## Review notes / boundaries (include in reviewer notes)
 

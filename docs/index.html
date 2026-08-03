@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ApplyVerse — find developer jobs across job boards and company ATS</title>
+<meta name="description" content="Free, open-source Chrome extension that searches 12 job boards plus company ATS pages (Greenhouse, Lever, Ashby, Workable, Personio, Recruitee) and merges everything into one de-duplicated, fit-scored list. No server — all data stays in your browser.">
+<link rel="canonical" href="https://theabhishekchandra.github.io/ApplyVerse/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ApplyVerse — find developer jobs everywhere">
+<meta property="og:description" content="One Chrome extension that aggregates developer jobs from 12 job boards and company ATS pages into a single de-duplicated, fit-scored list. Free and open source.">
+<meta property="og:url" content="https://theabhishekchandra.github.io/ApplyVerse/">
+<meta property="og:image" content="https://theabhishekchandra.github.io/ApplyVerse/images/banner.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="images/banner.svg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ApplyVerse",
+  "applicationCategory": "BrowserApplication",
+  "operatingSystem": "Chrome",
+  "description": "Open-source Chrome extension that aggregates developer jobs from job boards and company applicant tracking systems into one de-duplicated, fit-scored list.",
+  "url": "https://theabhishekchandra.github.io/ApplyVerse/",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <img src="images/banner.svg" alt="ApplyVerse">
+  <h1>Find developer jobs everywhere — in one list</h1>
+  <p class="tagline">
+    A free, open-source Chrome extension that searches 12 job boards <em>and</em>
+    company career pages, then merges everything into a single de-duplicated,
+    fit-scored list. No server. Nothing leaves your browser.
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/theabhishekchandra/ApplyVerse/releases/latest">Download latest release</a>
+    <a class="btn" href="https://github.com/theabhishekchandra/ApplyVerse">View source on GitHub</a>
+  </div>
+</header>
+
+<section>
+  <h2>Why another job tool?</h2>
+  <p>
+    Job aggregators only index a slice of what's actually open. A huge number of
+    roles live <strong>only</strong> on each company's applicant tracking system —
+    Greenhouse, Lever, Ashby, Workable, Personio, Recruitee — and never reach
+    LinkedIn or Indeed at all. ApplyVerse reads both worlds and unifies them.
+  </p>
+</section>
+
+<section>
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>🔀 One merged list</h3>
+      <p>A job posted to five boards collapses into one row that keeps all its sources.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 Company-ATS sweep</h3>
+      <p>Reads companies' public career APIs directly — no login, no tabs, no scraping.</p>
+    </div>
+    <div class="card">
+      <h3>🔎 Google-dork builder</h3>
+      <p>Finds ATS pages Google already indexed and pulls their full listings in one click.</p>
+    </div>
+    <div class="card">
+      <h3>🔔 Background watcher</h3>
+      <p>Sweeps on a schedule and notifies you the moment a new matching role appears.</p>
+    </div>
+    <div class="card">
+      <h3>⭐ Fit-scoring &amp; tracking</h3>
+      <p>Rank by match; filter by experience, work mode, freshness; mark Saved / Applied / Hidden.</p>
+    </div>
+    <div class="card">
+      <h3>📤 Export anywhere</h3>
+      <p>CSV, JSON, or Markdown you can paste straight into Notion.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>See it</h2>
+  <figure>
+    <img src="images/dashboard.png" alt="ApplyVerse results dashboard showing merged, de-duplicated job listings with fit scores">
+    <figcaption>The unified dashboard — every source merged, de-duplicated, and fit-scored.</figcaption>
+  </figure>
+  <figure>
+    <img src="images/dork-builder.png" alt="ApplyVerse Google-dork builder for discovering company ATS job pages">
+    <figcaption>The dork builder — discover company ATS boards Google has already indexed.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Install</h2>
+  <ol>
+    <li>Download <code>applyverse-&lt;version&gt;.zip</code> from the
+        <a href="https://github.com/theabhishekchandra/ApplyVerse/releases/latest">latest release</a> and unzip it.</li>
+    <li>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong> (top right).</li>
+    <li>Click <strong>Load unpacked</strong> and pick the <code>applyverse</code> folder.</li>
+    <li>Pin the 🔎 ApplyVerse icon and click it to start searching.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Your data stays yours</h2>
+  <p>
+    ApplyVerse has no backend. Search profiles, results, and apply-tracking live in
+    your browser's local storage and are deleted when you uninstall. There is no
+    account, no analytics, and no remote code — read the full
+    <a href="privacy.html">privacy policy</a>.
+  </p>
+</section>
+
+<footer>
+  <p>
+    <a href="https://github.com/theabhishekchandra/ApplyVerse">GitHub</a>·
+    <a href="privacy.html">Privacy</a>·
+    <a href="https://github.com/theabhishekchandra/ApplyVerse/blob/main/SECURITY.md">Security</a>·
+    <a href="https://github.com/theabhishekchandra/ApplyVerse/blob/main/CONTRIBUTING.md">Contributing</a>
+  </p>
+  <p>MIT licensed · Built by <a href="https://github.com/theabhishekchandra">Abhishek Chandra</a></p>
+</footer>
+
+</div>
+</body>
+</html>
