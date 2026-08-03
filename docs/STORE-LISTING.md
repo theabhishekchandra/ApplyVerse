@@ -99,12 +99,64 @@ the dork builder, the options/watcher page.
 
 ---
 
+## Additional fields
+
+| Field | Value |
+|-------|-------|
+| Official URL | *None* — needs Search Console domain verification; not worth it |
+| Homepage URL | `https://theabhishekchandra.github.io/ApplyVerse/` |
+| Support URL | `https://github.com/theabhishekchandra/ApplyVerse/issues` |
+
+---
+
 ## Privacy tab
 
-- **Single purpose** and **permission justifications** → [PACKAGING.md](PACKAGING.md)
-- **Privacy policy URL** → `https://theabhishekchandra.github.io/ApplyVerse/privacy.html`
-- **Data usage** — ApplyVerse collects none of the listed categories; nothing
-  leaves the browser. Tick the three certification checkboxes.
+**Single purpose:**
+
+```
+Aggregate developer job listings from public job boards and company ATS pages into one searchable, filterable list.
+```
+
+**Permission justifications** — one box each. Reviewers read these, so each is a
+full sentence explaining the user-visible feature it enables.
+
+| Permission | Justification |
+|------------|---------------|
+| `scripting` | Injects the reader script into a job board page so listings visible to the user can be collected into the unified results table. |
+| `tabs` | Opens each selected provider's search page during an aggregator run, and closes it when collection finishes. |
+| `activeTab` | Lets the toolbar popup read the single job board the user is currently viewing, when they click "run this provider". |
+| `storage` | Saves search profiles, collected results, the seen-jobs list and apply-tracking state locally via chrome.storage.local. |
+| `downloads` | Exports the collected results as a CSV, JSON, or Markdown file when the user clicks Export. |
+| `cookies` | Performs a read-only check of whether the user is already logged in to a provider, so the extension can skip providers that would return an empty page. Cookie values are never read, stored, or transmitted. |
+| `alarms` | Schedules the background sweep of public ATS career APIs at the interval the user chooses. |
+| `notifications` | Shows a desktop notification when the background sweep finds new roles matching the user's profile. |
+| Host permissions | Fetches listings from the job boards and public ATS career APIs the user has selected. Each host is a job board or ATS platform the extension reads postings from. |
+
+**Remote code:** No, I am not using remote code. All scripts are bundled in the
+package (an MV3 requirement).
+
+**Data usage:** ApplyVerse transmits nothing off the device, so **none** of the
+data categories apply — leave them all unchecked. Then tick all three
+certifications:
+
+- [x] I do not sell or transfer user data to third parties, outside of the approved use cases
+- [x] I do not use or transfer user data for purposes that are unrelated to my item's single purpose
+- [x] I do not use or transfer user data to determine creditworthiness or for lending purposes
+
+**Privacy policy URL:**
+
+```
+https://theabhishekchandra.github.io/ApplyVerse/privacy.html
+```
+
+---
+
+## Reviewer notes
+
+Paste the "Review notes / boundaries" section from [PACKAGING.md](PACKAGING.md) —
+it states up front that the extension only reads public no-auth endpoints, never
+bypasses CAPTCHAs, and paces its requests. Worth including: broad host
+permissions are the most common reason a submission stalls.
 
 ## Distribution tab
 

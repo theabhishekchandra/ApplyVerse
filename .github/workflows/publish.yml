@@ -1,0 +1,123 @@
+name: Publish to Chrome Web Store
+
+# Fires when you publish a GitHub Release whose tag is v<version>, e.g. v1.5.0.
+# The tag must match extension/manifest.json "version" exactly — the store
+# rejects a re-used version, so a mismatch is caught here rather than after
+# a failed upload.
+#
+# Requires three repository secrets (Settings -> Secrets and variables -> Actions):
+#   CWS_CLIENT_ID       OAuth client ID       (Google Cloud Console)
+#   CWS_CLIENT_SECRET   OAuth client secret   (Google Cloud Console)
+#   CWS_REFRESH_TOKEN   OAuth refresh token   (one-time consent flow)
+# See docs/PUBLISHING-AUTOMATION.md for how to obtain them.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and validate only — do not upload"
+        type: boolean
+        default: true
+
+# This repo is public. Only maintainers can publish a release, and secrets are
+# never exposed to pull requests from forks, so credentials cannot leak via a PR.
+permissions:
+  contents: read
+
+env:
+  EXTENSION_ID: mfpipnbnkfinhfpambhfmicpgkjdlege # public — it is in the store URL
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check manifest version matches the release tag
+        if: github.event_name == 'release'
+        run: |
+          manifest_version="$(node -p 'require("./extension/manifest.json").version')"
+          tag_version="${GITHUB_REF_NAME#v}"
+          echo "manifest=$manifest_version tag=$tag_version"
+          if [ "$manifest_version" != "$tag_version" ]; then
+            echo "::error::manifest.json is v$manifest_version but the tag is v$tag_version. Bump the manifest before releasing."
+            exit 1
+          fi
+
+      - name: Check store description length
+        run: |
+          node -e '
+            const d = require("./extension/manifest.json").description;
+            if (d.length > 132) {
+              console.error(`::error::manifest description is ${d.length} chars; the store limit is 132`);
+              process.exit(1);
+            }
+            console.log(`description ok: ${d.length}/132 chars`);
+          '
+
+      - name: Unit tests
+        working-directory: extension
+        run: node --test
+
+      - name: Build the store zip
+        run: ./scripts/pack.sh
+
+      - name: Locate the zip
+        id: zip
+        run: echo "path=$(ls dist/applyverse-*-webstore.zip)" >> "$GITHUB_OUTPUT"
+
+      # Everything below talks to the store API with plain curl rather than a
+      # third-party action, so no external code ever sees the credentials.
+
+      - name: Get an access token
+        if: github.event_name == 'release' || inputs.dry_run == false
+        id: auth
+        env:
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: |
+          token="$(curl -sf -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=$CLIENT_ID" \
+            -d "client_secret=$CLIENT_SECRET" \
+            -d "refresh_token=$REFRESH_TOKEN" \
+            -d "grant_type=refresh_token" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).access_token')"
+          if [ -z "$token" ] || [ "$token" = "undefined" ]; then
+            echo "::error::could not obtain an access token — check the CWS_* secrets"
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the new package
+        if: github.event_name == 'release' || inputs.dry_run == false
+        run: |
+          response="$(curl -sf \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+            -H "x-goog-api-version: 2" \
+            -X PUT -T "${{ steps.zip.outputs.path }}" \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$EXTENSION_ID")"
+          echo "$response"
+          state="$(echo "$response" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).uploadState')"
+          if [ "$state" != "SUCCESS" ]; then
+            echo "::error::upload failed (uploadState=$state)"
+            exit 1
+          fi
+
+      - name: Submit for review
+        if: github.event_name == 'release' || inputs.dry_run == false
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Length: 0" \
+            -X POST \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/$EXTENSION_ID/publish"
+          echo
+          echo "Submitted. Google review still applies — this does not skip it."
