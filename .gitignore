@@ -42,3 +42,9 @@ Desktop.ini
 
 # Tool output (applyverse CSV exports)
 *.csv
+
+# Local scratch — console probes, saved page dumps, session artifacts.
+# This repo is PUBLIC: never commit anything captured from a logged-in session.
+scratch/
+*.har
+saved-page*.html
