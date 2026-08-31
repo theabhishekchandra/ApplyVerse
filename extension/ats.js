@@ -219,7 +219,7 @@ var ATS_SEED = {
     "capco", "postman", "speechify"
   ],
   lever: [
-    "spotify", "gopuff", "alloy", "sysdig", "jobgether", "hhaexchange", "highspot",
+    "spotify", "gopuff", "alloy", "sysdig", "jobgether", "hhaexchange",
     "tala", "safe", "ekohealth"
   ],
   ashby: [
