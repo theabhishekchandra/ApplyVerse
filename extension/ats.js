@@ -216,16 +216,29 @@ var ATS_SEED = {
     "stripe", "airbnb", "coinbase", "databricks", "robinhood", "dropbox", "gitlab",
     "figma", "discord", "brex", "samsara", "cloudflare", "instacart", "lyft",
     "pinterest", "reddit", "twitch", "asana", "affirm", "chime", "flexport", "gusto",
-    "capco", "postman", "speechify"
+    "capco", "postman", "speechify",
+    // verified 2026-09-03: each returns 200 with >=1 open posting
+    "anthropic", "datadog", "mongodb", "elastic", "waymo", "lucidmotors", "okta",
+    "fivetran", "roblox", "scaleai", "riotgames", "epicgames", "twilio", "grafanalabs",
+    "nuro", "duolingo", "mozilla", "vercel", "mixpanel", "jetbrains", "tailscale",
+    "mercury", "launchdarkly", "checkr", "amplitude", "webflow", "cockroachlabs",
+    "khanacademy", "assemblyai", "wikimedia", "airtable", "honeycomb", "planetscale",
+    "circleci", "instabase", "netlify"
   ],
   lever: [
     "spotify", "gopuff", "alloy", "sysdig", "jobgether", "hhaexchange",
-    "tala", "safe", "ekohealth"
+    "tala", "safe", "ekohealth",
+    // verified 2026-09-03: each returns 200 with >=1 open posting
+    "shieldai"
   ],
   ashby: [
     "openai", "notion", "ramp", "cohere", "linear", "replit", "perplexity",
     "supabase", "posthog", "modal", "runway", "astronomer", "watershed",
-    "bjakcareer", "patreon", "substack", "aspora"
+    "bjakcareer", "patreon", "substack", "aspora",
+    // verified 2026-09-03: each returns 200 with >=1 open posting
+    "snowflake", "elevenlabs", "clickhouse", "vanta", "plaid", "langchain",
+    "deepgram", "docker", "1password", "benchling", "sentry", "render",
+    "confluent", "redis", "airbyte", "railway", "zapier", "prefect", "pinecone"
   ],
   workable: [],
   recruitee: [],
